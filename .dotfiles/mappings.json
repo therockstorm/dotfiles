@@ -1,0 +1,9 @@
+{
+  ".ackrc": "~/.ackrc",
+  ".gitconfig": "~/.gitconfig",
+  ".zshrc": "~/.zshrc",
+  "aliases.zsh": "~/.oh-my-zsh/custom/aliases.zsh",
+  "config": "~/.aws/config",
+  "exports.zsh": "~/.oh-my-zsh/custom/exports.zsh",
+  "plugins.sbt": "~/.sbt/1.0/plugins/plugins.sbt"
+}
