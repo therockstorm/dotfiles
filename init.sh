@@ -1,25 +1,13 @@
-# Use colors if supported
-if which tput >/dev/null 2>&1; then
-  ncolors=$(tput colors)
-fi
-
-if [ -t 1 ] && [ -n "$ncolors" ] && [ "$ncolors" -ge 8 ]; then
-  GREEN="$(tput setaf 2)"
-  YELLOW="$(tput setaf 3)"
-  NORMAL="$(tput sgr0)"
-else
-  GREEN=""
-  YELLOW=""
-  NORMAL=""
-fi
+eval "$(curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/colors.sh)"
 
 printf "${YELLOW}Hello $(whoami)!${NORMAL}\n"
 
-# Ask for password upfront
+# Ask for password upfront, exit script on error
 sudo -v
+set -e
 
 if [ ! -f ~/.ssh/id_rsa.pub ]; then
-  printf "${GREEN}Enter the email address associated with your GitHub account:${NORMAL}\n"
+  printf "${GREEN}Enter the email address associated with your GitHub account: ${NORMAL}\n"
   read -r email
 
   printf "${YELLOW}Generating ssh key...${NORMAL}\n"
@@ -38,20 +26,14 @@ if [ ! -f /usr/local/bin/brew ]; then
 fi
 
 printf "${YELLOW}Installing dependencies...${NORMAL}\n"
-brew install \
-  ack \
-  awscli \
-  bat \
-  diff-so-fancy \
-  fd \
-  fzf \
-  git \
-  tldr
+for app in ack awscli bat diff-so-fancy fd fzf git tldr; do
+  brew ls --versions $app || brew install $app
+done
 
 brew tap caskroom/fonts
 
 for app in dropbox firefox font-fira-code iterm2 google-chrome postman signal spectacle visual-studio-code; do
-  brew cask install $app
+  brew cask --versions $app || brew cask install $app
 done
 
 code --install-extension shan.code-settings-sync

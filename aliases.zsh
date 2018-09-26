@@ -4,6 +4,9 @@ alias c=clear
 # brew
 alias brewup='brew update && brew upgrade && brew cleanup'
 
+# docker
+alias dsa="docker stop $(docker ps --format '{{.Names}}')"
+
 # git
 alias gunc='git reset --soft HEAD^'
 alias grpo='git remote prune origin'
