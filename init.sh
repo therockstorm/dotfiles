@@ -1,3 +1,4 @@
+HOME=/Users/$(whoami) # zsh installation affects `~`
 eval "$(curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/colors.sh)"
 
 printf "${YELLOW}Hello $(whoami)!${NORMAL}\n"
@@ -6,7 +7,7 @@ printf "${YELLOW}Hello $(whoami)!${NORMAL}\n"
 sudo -v
 set -e
 
-if [ ! -f ~/.ssh/id_rsa.pub ]; then
+if [ ! -f $HOME/.ssh/id_rsa.pub ]; then
   printf "${GREEN}Enter the email address associated with your GitHub account: ${NORMAL}\n"
   read -r email
 
@@ -16,7 +17,7 @@ if [ ! -f ~/.ssh/id_rsa.pub ]; then
   AddKeysToAgent yes
   UseKeychain yes
   IdentityFile ~/.ssh/id_rsa
-  ForwardAgent yes" | tee ~/.ssh/config
+  ForwardAgent yes" | tee $HOME/.ssh/config
   eval "$(ssh-agent -s)"
 fi
 
@@ -26,26 +27,36 @@ if [ ! -f /usr/local/bin/brew ]; then
 fi
 
 printf "${YELLOW}Installing dependencies...${NORMAL}\n"
-for app in ack awscli bat diff-so-fancy fd fzf git tldr; do
+for app in ack awscli bat diff-so-fancy fd git tldr; do
   brew ls --versions $app || brew install $app
 done
+
+if ! brew ls --versions fzf > /dev/null; then
+  brew install fzf
+  $(brew --prefix)/opt/fzf/install
+fi
 
 brew tap caskroom/fonts
 
 for app in dropbox firefox font-fira-code iterm2 google-chrome postman signal spectacle visual-studio-code; do
-  brew cask --versions $app || brew cask install $app
+  brew cask ls --versions $app || brew cask install $app
 done
 
 code --install-extension shan.code-settings-sync
 
-if [ ! -d ~/.oh-my-zsh ]; then
+OH_MY_ZSH=$HOME/.oh-my-zsh
+if [ ! -d $OH_MY_ZSH ]; then
   printf "${YELLOW}Installing oh-my-zsh...${NORMAL}\n"
-  ZSH_CUSTOM="~/.oh-my-zsh/custom"
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sed 's:env zsh -l::g')"
+  ZSH_CUSTOM=$OH_MY_ZSH/custom
   git clone git://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
   git clone git://github.com/lukechilds/zsh-nvm $ZSH_CUSTOM/plugins/zsh-nvm
+
+  rm -/.bash_profile
+  source $HOME/.zshrc
 fi
 
+printf "${YELLOW}Modifying macOS settings...${NORMAL}\n"
 # Set icon size, remove default icons, auto-hide, remove and don't show Dashboard as Space in Dock
 defaults write com.apple.dock tilesize -int 36
 defaults write com.apple.dock persistent-apps -array
@@ -68,7 +79,8 @@ killall Finder
 # Don’t display dialog when quitting in iTerm
 defaults write com.googlecode.iterm2 PromptOnQuit -bool false
 
-pbcopy < ~/.ssh/id_rsa.pub
+pbcopy < $HOME/.ssh/id_rsa.pub
 printf "${GREEN}Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys${NORMAL}\n"
 
-source ~/.zshrc
+# Must be last, nothing after this command will execute
+env zsh -l

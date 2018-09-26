@@ -18,10 +18,3 @@ plugins=(
 source $ZSH/oh-my-zsh.sh
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
-# tabtab source for serverless package
-# uninstall by removing these lines or running `tabtab uninstall serverless`
-[[ -f /Users/rwarren/dev/bambot/node_modules/tabtab/.completions/serverless.zsh ]] && . /Users/rwarren/dev/bambot/node_modules/tabtab/.completions/serverless.zsh
-# tabtab source for sls package
-# uninstall by removing these lines or running `tabtab uninstall sls`
-[[ -f /Users/rwarren/dev/bambot/node_modules/tabtab/.completions/sls.zsh ]] && . /Users/rwarren/dev/bambot/node_modules/tabtab/.completions/sls.zsh
