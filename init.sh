@@ -8,8 +8,7 @@ sudo -v
 set -e
 
 if [ ! -f $HOME/.ssh/id_rsa.pub ]; then
-  printf "${GREEN}Enter the email address associated with your GitHub account: ${NORMAL}\n"
-  read -r email
+  read -rp "${GREEN}Enter the email address associated with your GitHub account: ${NORMAL}" email
 
   printf "${YELLOW}Generating ssh key...${NORMAL}\n"
   ssh-keygen -t rsa -b 4096 -C "$email"
@@ -57,6 +56,8 @@ if [ ! -d $OH_MY_ZSH ]; then
 fi
 
 printf "${YELLOW}Modifying macOS settings...${NORMAL}\n"
+# For more, see https://github.com/herrbischoff/awesome-macos-command-line and https://github.com/mathiasbynens/dotfiles/blob/master/.macos
+
 # Set icon size, remove default icons, auto-hide, remove and don't show Dashboard as Space in Dock
 defaults write com.apple.dock tilesize -int 36
 defaults write com.apple.dock persistent-apps -array
@@ -74,6 +75,7 @@ defaults write com.apple.finder AppleShowAllFiles -bool true
 defaults write com.apple.finder _FXSortFoldersFirst -bool true
 defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
 defaults write com.apple.finder QuitMenuItem -bool true
+chflags nohidden ~/Library
 killall Finder
 
 # Don’t display dialog when quitting in iTerm
