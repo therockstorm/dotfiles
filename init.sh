@@ -37,7 +37,7 @@ fi
 
 brew tap caskroom/fonts
 
-for app in dropbox firefox font-fira-code iterm2 google-chrome postman signal spectacle visual-studio-code; do
+for app in dropbox firefox font-fira-code google-chrome iterm2 postman signal spectacle visual-studio-code; do
   brew cask ls --versions $app || brew cask install $app
 done
 
@@ -58,12 +58,16 @@ fi
 printf "${YELLOW}Modifying macOS settings...${NORMAL}\n"
 # For more, see https://github.com/herrbischoff/awesome-macos-command-line and https://github.com/mathiasbynens/dotfiles/blob/master/.macos
 
-# Set icon size, remove default icons, auto-hide, remove and don't show Dashboard as Space in Dock
+# Configure Spectacle
+cp spectacle.json ~/Library/Application\ Support/Spectacle/Shortcuts.json
+
+# Set icon size, remove default icons, auto-hide, remove and don't show Dashboard as Space, don't bounce icons in Dock
 defaults write com.apple.dock tilesize -int 36
 defaults write com.apple.dock persistent-apps -array
 defaults write com.apple.dock autohide -bool true
 defaults write com.apple.dashboard mcx-disabled -bool true
 defaults write com.apple.dock dashboard-in-overlay -bool true
+defaults write com.apple.dock no-bouncing -bool false
 killall Dock
 
 # Enable Tab in modal dialogs, map Caps Lock to ESC
@@ -75,11 +79,28 @@ defaults write com.apple.finder AppleShowAllFiles -bool true
 defaults write com.apple.finder _FXSortFoldersFirst -bool true
 defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
 defaults write com.apple.finder QuitMenuItem -bool true
-chflags nohidden ~/Library
 killall Finder
 
-# Don’t display dialog when quitting in iTerm
+# Configure iTerm
+ITERM=$HOME/Library/Preferences/com.googlecode.iterm2.plist
 defaults write com.googlecode.iterm2 PromptOnQuit -bool false
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap Dict' $ITERM
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000 Dict' $ITERM
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000:Action integer 2' $ITERM
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000:Text string ""' $ITERM
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000 Dict' $ITERM
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000:Action integer 0' $ITERM
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000:Text string ""' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :HideTab false' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"NSWindow Frame SharedPreferences" "697 344 1016 512 0 0 1680 1027 "' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Custom Directory" Yes' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf702-0x280000":Action 10' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf702-0x280000":Text b' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf703-0x280000":Action 10' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf703-0x280000":Text f' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Option Key Sends" 2' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Working Directory" "/Users/rwarren/dev"' $ITERM
+/usr/libexec/PlistBuddy -c 'Set :"findMode_iTerm" 0' $ITERM
 
 pbcopy < $HOME/.ssh/id_rsa.pub
 printf "${GREEN}Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys${NORMAL}\n"

@@ -10,7 +10,6 @@ Configuration files
 1. System Preferences
    - Keyboard > Keyboard > "Touch Bar shows" and "Press Fn key to"
    - Display > Night Shift > Schedule
-1. Get forward/backward-word working with [zsh and iterm2](https://superuser.com/a/726781)
 1. Install Authy, Canvas Defender, LastPass, nBox, and uBlock Origin Chrome extensions
 1. Install Canvas Defender, LastPass, Neat URL, and uBlock Origin Firefox add-ons
    - about:config

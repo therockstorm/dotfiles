@@ -12,6 +12,7 @@ plugins=(
   git
   zsh-nvm
   osx
+  z
   zsh-autosuggestions
 )
 
