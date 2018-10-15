@@ -5,7 +5,20 @@ alias c=clear
 alias brewup='brew update && brew upgrade && brew cleanup'
 
 # docker
-alias dsa="docker stop $(docker ps --format '{{.Names}}')"
+function docker_ps() {
+  docker ps --format '{{.Names}}'
+}
+
+function docker_stop_all() {
+  if [ "$(docker_ps)" ]; then
+    echo 'Stopping containers...'
+    docker stop $(docker_ps)
+  else
+    echo 'No containers running'
+  fi
+}
+
+alias dsa=docker_stop_all
 
 # git
 alias gunc='git reset --soft HEAD^'

@@ -50,6 +50,8 @@ if [ ! -d $OH_MY_ZSH ]; then
   ZSH_CUSTOM=$OH_MY_ZSH/custom
   git clone git://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
   git clone git://github.com/lukechilds/zsh-nvm $ZSH_CUSTOM/plugins/zsh-nvm
+  git clone https://github.com/denysdovhan/spaceship-prompt.git $ZSH_CUSTOM/themes/spaceship-prompt
+  ln -s $ZSH_CUSTOM/themes/spaceship-prompt/spaceship.zsh-theme $ZSH_CUSTOM/themes/spaceship.zsh-theme
 
   rm -/.bash_profile
   source $HOME/.zshrc
