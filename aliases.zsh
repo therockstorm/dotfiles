@@ -26,8 +26,8 @@ alias grpo='git remote prune origin'
 
 # node
 alias nr='npm run'
-alias npmig='npm i -g @therockstorm/generator-serverless npm npm-check-updates prettier release serverless yo --ignore-scripts'
+alias npmig='npm i -g @therockstorm/generator-serverless npm npm-check-updates prettier serverless yo --ignore-scripts'
 alias npmup='npm upgrade && ncu -u && npm install && npm test && npm outdated'
 
 # prettier
-alias pretty="prettier --write '**/*.+(js|jsx|json|md|ts|tsx|yml)'"
+alias pretty="prettier --write '{,!(dist|lib|public|.cache|.serverless|.webpack)/**/}*.+(js|jsx|json|md|ts|tsx|yml)'"
