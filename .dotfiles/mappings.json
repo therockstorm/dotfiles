@@ -1,5 +1,5 @@
 {
-  ".ackrc": "~/.ackrc",
+  ".asdfrc": "~/.asdfrc",
   ".gitconfig": "~/.gitconfig",
   ".zshrc": "~/.zshrc",
   "aliases.zsh": "~/.oh-my-zsh/custom/aliases.zsh",

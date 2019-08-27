@@ -10,8 +10,7 @@ Configuration files
 1. System Preferences
    - Keyboard > Keyboard > "Touch Bar shows" and "Press Fn key to"
    - Display > Night Shift > Schedule
-1. Install Authy, Canvas Defender, LastPass, nBox, and uBlock Origin Chrome extensions
-1. Install Canvas Defender, LastPass, Neat URL, and uBlock Origin Firefox add-ons
+1. Install LastPass, Neat URL, uBlock Origin, Airbnb Price Per Night Correcter Firefox add-ons
    - about:config
    - general.useragent.site_specific_overrides;true
    - general.useragent.override.instagram.com;Mozilla/5.0 (Linux; Android 7.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Focus/5.2 Chrome/67.0.3396.87 Mobile Safari/537.36

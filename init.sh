@@ -7,7 +7,7 @@ printf "${YELLOW}Hello $(whoami)!${NORMAL}\n"
 sudo -v
 set -e
 
-if [ ! -f $HOME/.ssh/id_rsa.pub ]; then
+if [ ! -f "$HOME/.ssh/id_rsa.pub" ]; then
   read -rp "${GREEN}Enter the email address associated with your GitHub account: ${NORMAL}" email
 
   printf "${YELLOW}Generating ssh key...${NORMAL}\n"
@@ -16,7 +16,7 @@ if [ ! -f $HOME/.ssh/id_rsa.pub ]; then
   AddKeysToAgent yes
   UseKeychain yes
   IdentityFile ~/.ssh/id_rsa
-  ForwardAgent yes" | tee $HOME/.ssh/config
+  ForwardAgent yes" | tee "$HOME/.ssh/config"
   eval "$(ssh-agent -s)"
 fi
 
@@ -26,35 +26,32 @@ if [ ! -f /usr/local/bin/brew ]; then
 fi
 
 printf "${YELLOW}Installing dependencies...${NORMAL}\n"
-for app in ack awscli bat diff-so-fancy fd git tldr; do
+for app in asdf awscli diff-so-fancy git gnupg ripgrep tldr; do
   brew ls --versions $app || brew install $app
 done
 
-if ! brew ls --versions fzf > /dev/null; then
-  brew install fzf
-  $(brew --prefix)/opt/fzf/install
-fi
-
 brew tap caskroom/fonts
 
-for app in dropbox firefox font-fira-code google-chrome iterm2 postman signal spectacle visual-studio-code; do
+for app in dropbox firefox font-fira-code iterm2 postman signal spectacle visual-studio-code; do
   brew cask ls --versions $app || brew cask install $app
 done
+
+asdf plugin-add nodejs https://github.com/asdf-vm/asdf-nodejs.git
+bash ~/.asdf/plugins/nodejs/bin/import-release-team-keyring
 
 code --install-extension shan.code-settings-sync
 
 OH_MY_ZSH=$HOME/.oh-my-zsh
-if [ ! -d $OH_MY_ZSH ]; then
+if [ ! -d "$OH_MY_ZSH" ]; then
   printf "${YELLOW}Installing oh-my-zsh...${NORMAL}\n"
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sed 's:env zsh -l::g')"
   ZSH_CUSTOM=$OH_MY_ZSH/custom
-  git clone git://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
-  git clone git://github.com/lukechilds/zsh-nvm $ZSH_CUSTOM/plugins/zsh-nvm
-  git clone https://github.com/denysdovhan/spaceship-prompt.git $ZSH_CUSTOM/themes/spaceship-prompt
-  ln -s $ZSH_CUSTOM/themes/spaceship-prompt/spaceship.zsh-theme $ZSH_CUSTOM/themes/spaceship.zsh-theme
+  git clone git://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
+  git clone https://github.com/denysdovhan/spaceship-prompt.git "$ZSH_CUSTOM/themes/spaceship-prompt"
+  ln -s "$ZSH_CUSTOM/themes/spaceship-prompt/spaceship.zsh-theme" "$ZSH_CUSTOM/themes/spaceship.zsh-theme"
 
   rm -/.bash_profile
-  source $HOME/.zshrc
+  source "$HOME/.zshrc"
 fi
 
 printf "${YELLOW}Modifying macOS settings...${NORMAL}\n"
@@ -86,25 +83,25 @@ killall Finder
 # Configure iTerm
 ITERM=$HOME/Library/Preferences/com.googlecode.iterm2.plist
 defaults write com.googlecode.iterm2 PromptOnQuit -bool false
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap Dict' $ITERM
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000 Dict' $ITERM
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000:Action integer 2' $ITERM
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000:Text string ""' $ITERM
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000 Dict' $ITERM
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000:Action integer 0' $ITERM
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000:Text string ""' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :HideTab false' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"NSWindow Frame SharedPreferences" "697 344 1016 512 0 0 1680 1027 "' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Custom Directory" Yes' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf702-0x280000":Action 10' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf702-0x280000":Text b' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf703-0x280000":Action 10' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf703-0x280000":Text f' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Option Key Sends" 2' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Working Directory" "/Users/rwarren/dev"' $ITERM
-/usr/libexec/PlistBuddy -c 'Set :"findMode_iTerm" 0' $ITERM
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap Dict' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000 Dict' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000:Action integer 2' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000:Text string ""' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000 Dict' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000:Action integer 0' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000:Text string ""' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :HideTab false' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"NSWindow Frame SharedPreferences" "697 344 1016 512 0 0 1680 1027 "' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Custom Directory" Yes' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf702-0x280000":Action 10' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf702-0x280000":Text b' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf703-0x280000":Action 10' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf703-0x280000":Text f' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Option Key Sends" 2' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Working Directory" "/Users/rwarren/dev"' "$ITERM"
+/usr/libexec/PlistBuddy -c 'Set :"findMode_iTerm" 0' "$ITERM"
 
-pbcopy < $HOME/.ssh/id_rsa.pub
+pbcopy < "$HOME/.ssh/id_rsa.pub"
 printf "${GREEN}Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys${NORMAL}\n"
 
 # Must be last, nothing after this command will execute

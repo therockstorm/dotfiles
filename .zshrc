@@ -34,20 +34,15 @@ COMPLETION_WAITING_DOTS="true"
 HIST_STAMPS="yyyy-mm-dd"
 
 plugins=(
+  asdf
   aws
   docker
   git
-  zsh-nvm
-  osx
-  sbt
-  urltools
   z
   zsh-autosuggestions
 )
 
 source $ZSH/oh-my-zsh.sh
-
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 bindkey '^ ' autosuggest-accept
 bindkey '^P' autosuggest-execute
