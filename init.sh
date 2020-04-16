@@ -11,8 +11,9 @@ help() {
     init [OPTION] [ARGS...]
 
   OPTIONS:
-    --init              Idempotent initialization of dependencies
-    -h, --help          Display help
+    --init      Idempotent initialization of dependencies
+    --restore   Restore macOS and program settings
+    -h, --help  Display help
   "
 }
 
@@ -51,7 +52,15 @@ init() {
     rm "$HOME/.bash_profile"
   fi
 
-  printf "${YELLOW}Modifying macOS settings...${NORMAL}\n"
+  pbcopy < "$HOME/.ssh/id_rsa.pub"
+  printf "${GREEN}Initialization complete. Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys${NORMAL}\n"
+
+  # Must be last, nothing after this command will execute
+  env zsh -l
+}
+
+restore() {
+  printf "${YELLOW}Restoring settings...${NORMAL}\n"
 
   mackup restore
 
@@ -66,15 +75,6 @@ init() {
   killall Dock
   killall Finder
   killall SystemUIServer
-
-  pbcopy < "$HOME/.ssh/id_rsa.pub"
-  printf "${GREEN}Initialization complete. Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys${NORMAL}\n"
-
-  # Must be last, nothing after this command will execute
-  env zsh -l
-}
-
-modify_settings() {
 }
 
 quiet() {
@@ -86,6 +86,7 @@ parse_args() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --init) shift; do_init=1;;
+      --restore) shift; do_restore=1;;
       -h|--help) shift; help;;
       -*) echo "Unknown option: $1" >&2; help; exit 1;;
       *) shift;;
@@ -93,6 +94,7 @@ parse_args() {
   done
 
   if [ -n "${do_init-}" ]; then init; fi
+  if [ -n "${do_restore-}" ]; then restore; fi
 }
 
 main() {

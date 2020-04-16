@@ -5,6 +5,7 @@ Configuration files
 ## Installation
 
 1. Run `curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/init.sh --output ~/Desktop/init.sh && chmod +x ~/Desktop/init.sh && ~/Desktop/init.sh --init`
+1. Once Dropbox is installed and synced, run `~/Desktop/init.sh --restore`
 1. System Preferences
    - Keyboard > Keyboard > "Touch Bar shows" and "Press Fn key to"
    - Display > Night Shift > Schedule
