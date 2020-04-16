@@ -4,14 +4,19 @@ Configuration files
 
 ## Installation
 
-1. Run `sh -c "$(curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/init.sh)"` to install dependencies
-1. Run `cd ~/dev && curl -L $(curl -s https://api.github.com/repos/rhysd/dotfiles/releases/latest | grep browser_ | grep darwin_386 | cut -d\" -f4) -o dotfiles.zip && unzip dotfiles.zip && rm dotfiles.zip` to download [`dotfiles`](https://github.com/rhysd/dotfiles)
-1. Run `cd ~/Dropbox/workspace/dotfiles && ~/dev/dotfiles link --dry` for a list of symbolic links to be created. Once you're happy with the output, run `~/dev/dotfiles link`
+1. Run `curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/init.sh --output ~/Desktop/init.sh && chmod +x ~/Desktop/init.sh && ~/Desktop/init.sh --init`
 1. System Preferences
    - Keyboard > Keyboard > "Touch Bar shows" and "Press Fn key to"
    - Display > Night Shift > Schedule
-1. Install LastPass, Neat URL, uBlock Origin, Airbnb Price Per Night Correcter Firefox add-ons
-   - about:config
-   - general.useragent.site_specific_overrides;true
-   - general.useragent.override.instagram.com;Mozilla/5.0 (Linux; Android 7.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Focus/5.2 Chrome/67.0.3396.87 Mobile Safari/537.36
+1. Install LastPass, Neat URL, uBlock Origin, Airbnb Price Per Night Correcter, Github + Mermaid, and Conex or Firefox Multi-Account Containers Firefox add-ons
 1. Install Copy'em Paste from the AppStore
+1. Import `iterm.json` into iTerm2
+1. Restart your computer
+
+## Editing configs
+
+1. List available configs with `ls ~/Library/Preferences/`
+1. List a program's configs with `defaults read <program>`
+1. Print a config with `/usr/libexec/PlistBuddy -c 'Print :<key>' ~/Library/Preferences/<program>.plist`, e.g., `/usr/libexec/PlistBuddy -c 'Print :"New Bookmarks":0:"Normal Font"' ~/Library/Preferences/com.googlecode.iterm2.plist`
+1. Add a config with `/usr/libexec/PlistBuddy -c 'Add :<key> <value>' ~/Library/Preferences/<program>.plist`, e.g., `/usr/libexec/PlistBuddy -c 'Add :GlobalKeyMap Dict' ~/Library/Preferences/com.googlecode.iterm2.plist`
+1. Set a config with `/usr/libexec/PlistBuddy -c 'Set :<key> <value>' ~/Library/Preferences/<program>.plist`, e.g., `/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Normal Font" "FiraCode-Regular 12"' ~/Library/Preferences/com.googlecode.iterm2.plist`

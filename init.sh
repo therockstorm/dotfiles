@@ -1,108 +1,102 @@
-HOME=/Users/$(whoami) # zsh installation affects `~`
-eval "$(curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/colors.sh)"
+#!/bin/bash
 
-printf "${YELLOW}Hello $(whoami)!${NORMAL}\n"
+cd "$(dirname "$0")"
+set -o errexit -o noclobber -o nounset
 
-# Ask for password upfront, exit script on error
-sudo -v
-set -e
+help() {
+  echo "
+  Configure macOS for first-time use.
 
-if [ ! -f "$HOME/.ssh/id_rsa.pub" ]; then
-  read -rp "${GREEN}Enter the email address associated with your GitHub account: ${NORMAL}" email
+  USAGE:
+    init [OPTION] [ARGS...]
 
-  printf "${YELLOW}Generating ssh key...${NORMAL}\n"
-  ssh-keygen -t rsa -b 4096 -C "$email"
-  echo "Host *
-  AddKeysToAgent yes
-  UseKeychain yes
-  IdentityFile ~/.ssh/id_rsa
-  ForwardAgent yes" | tee "$HOME/.ssh/config"
-  eval "$(ssh-agent -s)"
-fi
+  OPTIONS:
+    --init              Idempotent initialization of dependencies
+    -h, --help          Display help
+  "
+}
 
-if [ ! -f /usr/local/bin/brew ]; then
-  printf "${YELLOW}Installing Homebrew...${NORMAL}\n"
-  /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-fi
+init() {
+  HOME=/Users/$(whoami) # zsh installation affects `~`
+  eval "$(curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/colors.sh)"
+  printf "${YELLOW}Initializing $(whoami)'s dev dependencies...${NORMAL}\n"
+  sudo -v
 
-printf "${YELLOW}Installing dependencies...${NORMAL}\n"
-for app in asdf awscli diff-so-fancy git gnupg ripgrep tldr; do
-  brew ls --versions $app || brew install $app
-done
+  mkdir -p $HOME/dev
 
-brew tap caskroom/fonts
+  if [ ! -f "$HOME/.ssh/id_rsa.pub" ]; then
+    read -rp "${GREEN}Enter the email address associated with your GitHub account: ${NORMAL}" email
 
-for app in dropbox firefox font-fira-code iterm2 postman signal spectacle visual-studio-code; do
-  brew cask ls --versions $app || brew cask install $app
-done
+    printf "${YELLOW}Generating ssh key...${NORMAL}\n"
+    ssh-keygen -f $HOME/.ssh/id_rsa -t rsa -b 4096 -C "$email"
+    eval "$(ssh-agent -s)"
+  fi
 
-asdf plugin-add nodejs https://github.com/asdf-vm/asdf-nodejs.git
-bash ~/.asdf/plugins/nodejs/bin/import-release-team-keyring
+  if [ ! -f /usr/local/bin/brew ]; then
+    printf "${YELLOW}Installing Homebrew...${NORMAL}\n"
+    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+  fi
 
-code --install-extension shan.code-settings-sync
+  brew bundle
 
-OH_MY_ZSH=$HOME/.oh-my-zsh
-if [ ! -d "$OH_MY_ZSH" ]; then
-  printf "${YELLOW}Installing oh-my-zsh...${NORMAL}\n"
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sed 's:env zsh -l::g')"
-  ZSH_CUSTOM=$OH_MY_ZSH/custom
-  git clone git://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
-  git clone https://github.com/denysdovhan/spaceship-prompt.git "$ZSH_CUSTOM/themes/spaceship-prompt"
-  ln -s "$ZSH_CUSTOM/themes/spaceship-prompt/spaceship.zsh-theme" "$ZSH_CUSTOM/themes/spaceship.zsh-theme"
+  code --install-extension shan.code-settings-sync
 
-  rm -/.bash_profile
-  source "$HOME/.zshrc"
-fi
+  [ -d "$HOME/.nvm" ] ||
+    (curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash)
 
-printf "${YELLOW}Modifying macOS settings...${NORMAL}\n"
-# For more, see https://github.com/herrbischoff/awesome-macos-command-line and https://github.com/mathiasbynens/dotfiles/blob/master/.macos
+  OH_MY_ZSH=$HOME/.oh-my-zsh
+  if [ ! -d "$OH_MY_ZSH" ]; then
+    printf "${YELLOW}Installing oh-my-zsh...${NORMAL}\n"
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sed 's:env zsh -l::g')"
+    rm "$HOME/.bash_profile"
+  fi
 
-# Configure Spectacle
-cp spectacle.json ~/Library/Application\ Support/Spectacle/Shortcuts.json
+  printf "${YELLOW}Modifying macOS settings...${NORMAL}\n"
 
-# Set icon size, remove default icons, auto-hide, remove and don't show Dashboard as Space, don't bounce icons in Dock
-defaults write com.apple.dock tilesize -int 36
-defaults write com.apple.dock persistent-apps -array
-defaults write com.apple.dock autohide -bool true
-defaults write com.apple.dashboard mcx-disabled -bool true
-defaults write com.apple.dock dashboard-in-overlay -bool true
-defaults write com.apple.dock no-bouncing -bool false
-killall Dock
+  mackup restore
 
-# Enable Tab in modal dialogs, map Caps Lock to ESC
-defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
-hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029}]}'
+  # For more, see https://github.com/herrbischoff/awesome-macos-command-line and https://github.com/mathiasbynens/dotfiles/blob/master/.macos
+  # Enable Tab in modal dialogs, map Caps Lock to ESC
+  defaults write NSGlobalDomain AppleKeyboardUIMode -int 2
+  hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029}]}'
 
-# Show hidden files, keep folders on top, show list view, allow quitting (also hides desktop icons) in Finder
-defaults write com.apple.finder AppleShowAllFiles -bool true
-defaults write com.apple.finder _FXSortFoldersFirst -bool true
-defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
-defaults write com.apple.finder QuitMenuItem -bool true
-killall Finder
+  # Auto-hide menu bar
+  defaults write NSGlobalDomain _HIHideMenuBar -int 1
 
-# Configure iTerm
-ITERM=$HOME/Library/Preferences/com.googlecode.iterm2.plist
-defaults write com.googlecode.iterm2 PromptOnQuit -bool false
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap Dict' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000 Dict' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000:Action integer 2' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x19-0x60000:Text string ""' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000 Dict' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000:Action integer 0' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Add GlobalKeyMap:0x9-0x40000:Text string ""' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :HideTab false' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"NSWindow Frame SharedPreferences" "697 344 1016 512 0 0 1680 1027 "' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Custom Directory" Yes' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf702-0x280000":Action 10' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf702-0x280000":Text b' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf703-0x280000":Action 10' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Keyboard Map":"0xf703-0x280000":Text f' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Option Key Sends" 2' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Working Directory" "/Users/rwarren/dev"' "$ITERM"
-/usr/libexec/PlistBuddy -c 'Set :"findMode_iTerm" 0' "$ITERM"
+  killall Dock
+  killall Finder
+  killall SystemUIServer
 
-pbcopy < "$HOME/.ssh/id_rsa.pub"
-printf "${GREEN}Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys${NORMAL}\n"
+  pbcopy < "$HOME/.ssh/id_rsa.pub"
+  printf "${GREEN}Initialization complete. Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys${NORMAL}\n"
 
-# Must be last, nothing after this command will execute
-env zsh -l
+  # Must be last, nothing after this command will execute
+  env zsh -l
+}
+
+modify_settings() {
+}
+
+quiet() {
+  "$@" >/dev/null 2>&1
+}
+
+parse_args() {
+  [ "$#" -eq 0 ] && help && exit 0;
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --init) shift; do_init=1;;
+      -h|--help) shift; help;;
+      -*) echo "Unknown option: $1" >&2; help; exit 1;;
+      *) shift;;
+    esac
+  done
+
+  if [ -n "${do_init-}" ]; then init; fi
+}
+
+main() {
+  parse_args "$@"
+}
+
+main "$@"
