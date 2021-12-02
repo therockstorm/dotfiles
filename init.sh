@@ -18,49 +18,56 @@ help() {
 }
 
 init() {
-  HOME=/Users/$(whoami) # zsh installation affects `~`
-  eval "$(curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/colors.sh)"
-  printf "${YELLOW}Initializing $(whoami)'s dev dependencies...${NORMAL}\n"
+  echo "Initializing $(whoami)'s dev dependencies..."
   sudo -v
 
-  mkdir -p $HOME/dev
+  mkdir -p "$HOME/dev"
 
   if [ ! -f "$HOME/.ssh/id_rsa.pub" ]; then
-    read -rp "${GREEN}Enter the email address associated with your GitHub account: ${NORMAL}" email
+    read -rp "Enter the email address associated with your GitHub account: " email
 
-    printf "${YELLOW}Generating ssh key...${NORMAL}\n"
-    ssh-keygen -f $HOME/.ssh/id_rsa -t rsa -b 4096 -C "$email"
+    echo "Generating ssh key..."
+    ssh-keygen -f "$HOME/.ssh/id_rsa" -t rsa -b 4096 -C "$email"
     eval "$(ssh-agent -s)"
   fi
 
   if [ ! -f /usr/local/bin/brew ]; then
-    printf "${YELLOW}Installing Homebrew...${NORMAL}\n"
+    echo "Installing Homebrew..."
     /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
   fi
 
   brew bundle
 
-  code --install-extension shan.code-settings-sync
-
   [ -d "$HOME/.nvm" ] ||
-    (curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash)
+    (curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash)
 
-  OH_MY_ZSH=$HOME/.oh-my-zsh
-  if [ ! -d "$OH_MY_ZSH" ]; then
-    printf "${YELLOW}Installing oh-my-zsh...${NORMAL}\n"
+  ohMyZsh=$HOME/.oh-my-zsh
+  if [ ! -d "$ohMyZsh" ]; then
+    echo "Installing oh-my-zsh..."
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sed 's:env zsh -l::g')"
     rm "$HOME/.bash_profile"
   fi
 
+  bashProfile="$HOME/.bash_profile"
+  zshrc="$HOME/.zshrc"
+  file="$HOME/.profile"
+  if [[ -f $bashProfile ]]; then file=$bashProfile;
+  elif [[ -f $zshrc ]]; then file=$zshrc; fi
+  touch "$file"
+  if [ "$(alias | grep -c dcp)" -eq 0 ]; then
+    echo "Adding 'dcp' alias to $file"
+    echo "alias dcp=docker-compose" >> "$file"
+  fi
+
   pbcopy < "$HOME/.ssh/id_rsa.pub"
-  printf "${GREEN}Initialization complete. Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys${NORMAL}\n"
+  echo "Initialization complete. Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys"
 
   # Must be last, nothing after this command will execute
   env zsh -l
 }
 
 restore() {
-  printf "${YELLOW}Restoring settings...${NORMAL}\n"
+  echo "Restoring settings..."
 
   mackup restore
 
@@ -75,10 +82,6 @@ restore() {
   killall Dock
   killall Finder
   killall SystemUIServer
-}
-
-quiet() {
-  "$@" >/dev/null 2>&1
 }
 
 parse_args() {
