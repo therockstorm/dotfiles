@@ -9,8 +9,8 @@ Configuration files
 1. System Preferences
    - Keyboard > Keyboard > "Touch Bar shows" and "Press Fn key to"
    - Display > Night Shift > Schedule
-1. Install LastPass, Neat URL, uBlock Origin, Airbnb Price Per Night Correcter, Github + Mermaid, and Conex or Firefox Multi-Account Containers Firefox add-ons
-1. Install Copy'em Paste from the AppStore
+1. Log into Firefox to sync add-ons
+1. Install Alfred from the AppStore
 1. Import `iterm.json` into iTerm2
 1. Restart your computer
 
