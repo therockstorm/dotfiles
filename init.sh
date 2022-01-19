@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 cd "$(dirname "$0")"
 set -o errexit -o noclobber -o nounset
@@ -48,17 +48,6 @@ init() {
     rm "$HOME/.bash_profile"
   fi
 
-  bashProfile="$HOME/.bash_profile"
-  zshrc="$HOME/.zshrc"
-  file="$HOME/.profile"
-  if [[ -f $bashProfile ]]; then file=$bashProfile;
-  elif [[ -f $zshrc ]]; then file=$zshrc; fi
-  touch "$file"
-  if [ "$(alias | grep -c dcp)" -eq 0 ]; then
-    echo "Adding 'dcp' alias to $file"
-    echo "alias dcp=docker-compose" >> "$file"
-  fi
-
   pbcopy < "$HOME/.ssh/id_rsa.pub"
   echo "Initialization complete. Add generated SSH key (copied to your clipboard) to your GitHub account: https://github.com/settings/keys"
 
@@ -72,16 +61,8 @@ restore() {
   mackup restore
 
   # For more, see https://github.com/herrbischoff/awesome-macos-command-line and https://github.com/mathiasbynens/dotfiles/blob/master/.macos
-  # Enable Tab in modal dialogs, map Caps Lock to ESC
-  defaults write NSGlobalDomain AppleKeyboardUIMode -int 2
+  # Map Caps Lock to ESC
   hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029}]}'
-
-  # Auto-hide menu bar
-  defaults write NSGlobalDomain _HIHideMenuBar -int 1
-
-  killall Dock
-  killall Finder
-  killall SystemUIServer
 }
 
 parse_args() {

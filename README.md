@@ -4,13 +4,14 @@ Configuration files
 
 ## Installation
 
-1. Run `curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/init.sh --output ~/Desktop/init.sh && chmod +x ~/Desktop/init.sh && ~/Desktop/init.sh --init`
+1. Run `curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/init.sh --output ~/Desktop/init.sh && curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/Brewfile --output ~/Desktop/Brewfile && curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/iterm.json --output ~/Desktop/iterm.json && cd ~/Desktop && chmod +x init.sh && init.sh --init`
+   - If you get an error trying to run `init.sh`, remove it from quarantine and try again, `xattr -d com.apple.quarantine init.sh`
 1. Once Dropbox is installed and synced, run `~/Desktop/init.sh --restore`
 1. System Preferences
    - Keyboard > Keyboard > "Touch Bar shows" and "Press Fn key to"
    - Display > Night Shift > Schedule
 1. Log into Firefox to sync add-ons
-1. Install Alfred from the AppStore
+1. Install Alfred 4 from the website (not the AppStore)
 1. Import `iterm.json` into iTerm2
 1. Restart your computer
 
