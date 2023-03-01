@@ -4,21 +4,13 @@ Configuration files
 
 ## Installation
 
-1. Run `curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/init.sh --output ~/Desktop/init.sh && curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/Brewfile --output ~/Desktop/Brewfile && curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/iterm.json --output ~/Desktop/iterm.json && cd ~/Desktop && chmod +x init.sh && init.sh --init`
+1. Run `curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/init.sh --output ~/Desktop/init.sh && curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/Brewfile --output ~/Desktop/Brewfile && cd ~/Desktop && chmod +x init.sh && init.sh --init`
    - If you get an error trying to run `init.sh`, remove it from quarantine and try again, `xattr -d com.apple.quarantine init.sh`
-1. Once Dropbox is installed and synced, run `~/Desktop/init.sh --restore`
+1. Sync Dropbox
 1. System Preferences
-   - Keyboard > Keyboard > "Touch Bar shows" and "Press Fn key to"
+   - Keyboard > Keyboard Shortcuts... > Modifier Keys > Map "Caps Lock key" to "Escape"
+   - Desktop & Dock > Magnification off, auto-hide on, animate off, indicators off, recent apps off
    - Display > Night Shift > Schedule
 1. Log into Firefox to sync add-ons
-1. Install Alfred 4 from the website (not the AppStore)
-1. Import `iterm.json` into iTerm2
+1. Install Alfred 5 from the website (not the AppStore)
 1. Restart your computer
-
-## Editing configs
-
-1. List available configs with `ls ~/Library/Preferences/`
-1. List a program's configs with `defaults read <program>`
-1. Print a config with `/usr/libexec/PlistBuddy -c 'Print :<key>' ~/Library/Preferences/<program>.plist`, e.g., `/usr/libexec/PlistBuddy -c 'Print :"New Bookmarks":0:"Normal Font"' ~/Library/Preferences/com.googlecode.iterm2.plist`
-1. Add a config with `/usr/libexec/PlistBuddy -c 'Add :<key> <value>' ~/Library/Preferences/<program>.plist`, e.g., `/usr/libexec/PlistBuddy -c 'Add :GlobalKeyMap Dict' ~/Library/Preferences/com.googlecode.iterm2.plist`
-1. Set a config with `/usr/libexec/PlistBuddy -c 'Set :<key> <value>' ~/Library/Preferences/<program>.plist`, e.g., `/usr/libexec/PlistBuddy -c 'Set :"New Bookmarks":0:"Normal Font" "FiraCode-Regular 12"' ~/Library/Preferences/com.googlecode.iterm2.plist`
