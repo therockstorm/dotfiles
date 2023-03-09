@@ -22,20 +22,22 @@ init() {
 
   mkdir -p "$HOME/dev"
 
+  ohMyZsh=$HOME/.oh-my-zsh
+  if [ ! -d "$ohMyZsh" ]; then
+    echo "Installing oh-my-zsh..."
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    rm "$HOME/.bash_profile"
+  fi
+
   if [ ! -f /opt/homebrew/bin/brew ]; then
     echo "Installing Homebrew..."
-    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> "$HOME/.zshrc"
+    eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
 
   brew bundle
   asdf plugin add nodejs https://github.com/asdf-vm/asdf-nodejs.git
-
-  ohMyZsh=$HOME/.oh-my-zsh
-  if [ ! -d "$ohMyZsh" ]; then
-    echo "Installing oh-my-zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sed 's:env zsh -l::g')"
-    rm "$HOME/.bash_profile"
-  fi
 
   echo "Initialization complete, open a new terminal tab/window."
 
@@ -48,7 +50,6 @@ parse_args() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --init) shift; do_init=1;;
-      --restore) shift; do_restore=1;;
       -h|--help) shift; help;;
       -*) echo "Unknown option: $1" >&2; help; exit 1;;
       *) shift;;
@@ -56,7 +57,6 @@ parse_args() {
   done
 
   if [ -n "${do_init-}" ]; then init; fi
-  if [ -n "${do_restore-}" ]; then restore; fi
 }
 
 main() {
