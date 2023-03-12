@@ -12,6 +12,7 @@ help() {
 
   OPTIONS:
     --init      Idempotent initialization of dependencies
+    --symlink   Symlink dotfiles in home directory
     -h, --help  Display help
   "
 }
@@ -45,11 +46,25 @@ init() {
   env zsh -l
 }
 
+symlink() {
+  local dir="$HOME/dev/trs/dotfiles"
+  local backup_dir="$HOME/dev/trs/dotfiles_backup"
+  local files=".alfred .config/starship.toml .oh-my-zsh/custom .ssh/config .gitconfig .zshrc"
+
+  # Backup existing dotfiles, then create symlinks for $files
+  for f in $files; do
+      echo "Backing up existing dotfiles and creating $HOME/$f symlink..."
+      mv "$HOME/$f" "$backup_dir"
+      ln -s "$dir/$f" "$HOME/$f"
+  done
+}
+
 parse_args() {
   [ "$#" -eq 0 ] && help && exit 0;
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --init) shift; do_init=1;;
+      --symlink) shift; do_symlink=1;;
       -h|--help) shift; help;;
       -*) echo "Unknown option: $1" >&2; help; exit 1;;
       *) shift;;
@@ -57,6 +72,7 @@ parse_args() {
   done
 
   if [ -n "${do_init-}" ]; then init; fi
+  if [ -n "${do_symlink-}" ]; then symlink; fi
 }
 
 main() {

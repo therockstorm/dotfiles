@@ -1,0 +1,15 @@
+# https://starship.rs/config/
+
+command_timeout = 2000
+
+[aws.region_aliases]
+eu-central-1 = "eu-c1"
+eu-north-1 = "eu-n1"
+eu-south-1 = "eu-s1"
+eu-west-1 = "eu-w1"
+eu-west-2 = "eu-w2"
+eu-west-3 = "eu-w3"
+us-east-1 = "us-e1"
+us-east-2 = "us-e2"
+us-west-1 = "us-w1"
+us-west-2 = "us-w2"

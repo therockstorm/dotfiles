@@ -1,0 +1,31 @@
+[code]
+  editor = code --wait
+[commit]
+  gpgsign = true
+[core]
+  autocrlf = input
+[diff]
+  tool = vscode
+[difftool "vscode"]
+  cmd = code --wait --diff $LOCAL $REMOTE
+[gpg]
+  program = gpg
+[merge]
+  tool = vscode
+[mergetool]
+  keepBackup = false
+[mergetool "vscode"]
+  cmd = code --wait $MERGED
+[pager]
+  difftool = true
+[pull]
+  rebase = false
+[init]
+  defaultBranch = main
+[rerere]
+  enabled = true
+[tag]
+  gpgsign = true
+[user]
+  email = 1085683+therockstorm@users.noreply.github.com
+  name = Rocky Warren
