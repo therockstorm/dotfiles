@@ -49,9 +49,9 @@ init() {
 symlink() {
   local dir="$HOME/dev/trs/dotfiles"
   local backup_dir="$HOME/dev/trs/dotfiles_backup"
-  local files=".alfred .config/starship.toml .oh-my-zsh/custom .ssh/config .gitconfig .zshrc"
+  local files=".alfred .config/starship.toml .gnupg/gpg-agent.conf .oh-my-zsh/custom .ssh/config .gitconfig .zshrc"
 
-  # Backup existing dotfiles, then create symlinks for $files
+  # Backup existing, then create symlinks
   for f in $files; do
       echo "Backing up existing dotfiles and creating $HOME/$f symlink..."
       mv "$HOME/$f" "$backup_dir"
