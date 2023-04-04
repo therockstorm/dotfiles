@@ -31,3 +31,4 @@ bindkey '^P' autosuggest-execute
 
 source /opt/homebrew/opt/asdf/libexec/asdf.sh
 source $ZSH/oh-my-zsh.sh
+export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"

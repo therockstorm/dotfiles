@@ -4,13 +4,27 @@
   gpgsign = true
 [core]
   autocrlf = input
+  pager = delta
+[credential "https://github.com"]
+  helper = 
+  helper = !/opt/homebrew/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+  helper = 
+  helper = !/opt/homebrew/bin/gh auth git-credential
 [diff]
+  colorMoved = default
   tool = vscode
 [difftool "vscode"]
   cmd = code --wait --diff $LOCAL $REMOTE
+[delta]
+  navigate = true
+  light = false
 [gpg]
   program = gpg
+[interactive]
+    diffFilter = delta --color-only
 [merge]
+  con1flictstyle = diff3
   tool = vscode
 [mergetool]
   keepBackup = false
@@ -28,10 +42,4 @@
   gpgsign = true
 [user]
   email = 1085683+therockstorm@users.noreply.github.com
-  name = Rocky Warren
-[credential "https://github.com"]
-  helper = 
-  helper = !/opt/homebrew/bin/gh auth git-credential
-[credential "https://gist.github.com"]
-  helper = 
-  helper = !/opt/homebrew/bin/gh auth git-credential
+  name = Rocky Warren    
