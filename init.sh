@@ -23,11 +23,9 @@ init() {
 
   mkdir -p "$HOME/dev"
 
-  ohMyZsh=$HOME/.oh-my-zsh
-  if [ ! -d "$ohMyZsh" ]; then
-    echo "Installing oh-my-zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-    rm "$HOME/.bash_profile"
+  if ! command -v zinit &> /dev/null; then
+    echo "Installing zinit..."
+    bash -c "$(curl --fail --show-error --silent --location https://raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh)"
   fi
 
   if [ ! -f /opt/homebrew/bin/brew ]; then
@@ -38,7 +36,6 @@ init() {
   fi
 
   brew bundle
-  asdf plugin add nodejs https://github.com/asdf-vm/asdf-nodejs.git
 
   echo "Initialization complete, open a new terminal tab/window."
 
@@ -49,12 +46,18 @@ init() {
 symlink() {
   local dir="$HOME/dev/trs/dotfiles"
   local backup_dir="$HOME/dev/trs/dotfiles_backup"
-  local files=".alfred .config/starship.toml .gnupg/gpg-agent.conf .oh-my-zsh/custom .ssh/config .gitconfig .zshrc"
+  local files=".config/starship.toml .gnupg/gpg-agent.conf source .ssh/config .gitconfig .zshrc"
 
   # Backup existing, then create symlinks
   for f in $files; do
+      if [ -L "$HOME/$f" ]; then
+        echo "$HOME/$f is already a symlink, skipping..."
+        continue
+      fi
       echo "Backing up existing dotfiles and creating $HOME/$f symlink..."
-      mv "$HOME/$f" "$backup_dir"
+      mkdir -p "$backup_dir/$(dirname "$f")"
+      mv "$HOME/$f" "$backup_dir/$f"
+      mkdir -p "$(dirname "$HOME/$f")"
       ln -s "$dir/$f" "$HOME/$f"
   done
 }

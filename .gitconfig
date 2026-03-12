@@ -1,15 +1,15 @@
 [code]
   editor = code --wait
 [commit]
-  gpgsign = true
+  gpgsign = false
 [core]
   autocrlf = input
   pager = delta
 [credential "https://github.com"]
-  helper = 
+  helper =
   helper = !/opt/homebrew/bin/gh auth git-credential
 [credential "https://gist.github.com"]
-  helper = 
+  helper =
   helper = !/opt/homebrew/bin/gh auth git-credential
 [diff]
   colorMoved = default
@@ -18,11 +18,10 @@
   cmd = code --wait --diff $LOCAL $REMOTE
 [delta]
   navigate = true
-  light = false
 [gpg]
   program = gpg
 [interactive]
-    diffFilter = delta --color-only
+  diffFilter = delta --color-only
 [merge]
   con1flictstyle = diff3
   tool = vscode
@@ -41,5 +40,38 @@
 [tag]
   gpgsign = true
 [user]
-  email = 1085683+therockstorm@users.noreply.github.com
-  name = Rocky Warren    
+  email = rocky@clipboardhealth.com
+  name = Rocky Warren
+[filter "lfs"]
+  process = git-lfs filter-process
+  required = true
+  clean = git-lfs clean -- %f
+  smudge = git-lfs smudge -- %f
+[includeIf "gitdir:~/dev/c/"]
+  path = ~/.gitconfig-cbh
+[includeIf "gitdir:~/Documents/Obsidian\ Vault/prompts/"]
+  path = ~/.gitconfig-cbh
+[alias]
+  fpush = push
+  append = town append
+  hack = town hack
+  propose = town propose
+  ship = town ship
+  sync = town sync
+[git-town]
+  main-branch = main
+  new-branch-type = feature
+  forge-type = github
+  github-connector = gh
+  unknown-branch-type = feature
+  push-hook = true
+  share-new-branches = no
+  ship-strategy = squash-merge
+  ship-delete-tracking-branch = true
+  sync-feature-strategy = rebase
+  sync-perennial-strategy = ff-only
+  sync-prototype-strategy = rebase
+  sync-upstream = true
+  sync-tags = true
+[coderabbit]
+  machineId = cli/30f5e82b15d04703839471d0c39c0fb6
