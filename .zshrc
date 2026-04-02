@@ -48,7 +48,7 @@ bindkey '^[[1;3D' backward-word
 export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
 export PATH="$PATH:/Users/rocky/.local/bin"
 
-# Source custom source files (aliases, exports, work)
+# Source files (aliases, exports, work)
 for file in ~/source/*.zsh; do
   source "$file"
 done
@@ -57,3 +57,6 @@ done
 autoload -Uz compinit && compinit && source <(entire completion zsh)
 
 eval "$(op completion zsh)"; compdef _op op
+
+# Clipboard shell config
+[ -f "$HOME/.config/clipboard/shell.sh" ] && source "$HOME/.config/clipboard/shell.sh"

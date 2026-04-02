@@ -1,7 +1,7 @@
 [code]
-  editor = code --wait
+  editor = zed --wait
 [commit]
-  gpgsign = false
+  gpgsign = true
 [core]
   autocrlf = input
   pager = delta
@@ -13,22 +13,23 @@
   helper = !/opt/homebrew/bin/gh auth git-credential
 [diff]
   colorMoved = default
-  tool = vscode
-[difftool "vscode"]
-  cmd = code --wait --diff $LOCAL $REMOTE
+  tool = zed
+[difftool "zed"]
+  cmd = zed --wait --diff $LOCAL $REMOTE
 [delta]
   navigate = true
 [gpg]
   program = gpg
+  format = ssh
 [interactive]
   diffFilter = delta --color-only
 [merge]
   con1flictstyle = diff3
-  tool = vscode
+  tool = zed
 [mergetool]
   keepBackup = false
-[mergetool "vscode"]
-  cmd = code --wait $MERGED
+[mergetool "zed"]
+  cmd = zed --wait $MERGED
 [pager]
   difftool = true
 [pull]
@@ -42,6 +43,7 @@
 [user]
   email = rocky@clipboardhealth.com
   name = Rocky Warren
+  signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIINCFUtIiP7+XYUkuLHHbGlzDUi6Su51pppnV0YPw7qd id_ed25519 GitHub
 [filter "lfs"]
   process = git-lfs filter-process
   required = true
@@ -75,3 +77,5 @@
   sync-tags = true
 [coderabbit]
   machineId = cli/30f5e82b15d04703839471d0c39c0fb6
+[gpg "ssh"]
+  program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
