@@ -10,6 +10,12 @@ if [[ ! -d "$ZINIT_HOME" ]]; then
 fi
 source "${ZINIT_HOME}/zinit.zsh"
 
+# Stub compdef so early completions (e.g. op) don't error before zinit's
+# deferred compinit. zicdreplay replays them once the system is ready.
+if (( ! $+functions[compdef] )); then
+  compdef() { : }
+fi
+
 # Load plugins with turbo mode (deferred loading)
 zinit light-mode for \
   OMZL::git.zsh \
@@ -53,10 +59,14 @@ for file in ~/source/*.zsh; do
   source "$file"
 done
 
-# Entire CLI shell completion
-autoload -Uz compinit && compinit && source <(entire completion zsh)
-
-eval "$(op completion zsh)"; compdef _op op
-
-# Clipboard shell config
+# Clipboard shell config (includes op completion; compdef calls are
+# replayed by zicdreplay once zinit's deferred compinit runs)
 [ -f "$HOME/.config/clipboard/shell.sh" ] && source "$HOME/.config/clipboard/shell.sh"
+
+# BEGIN SCFW MANAGED BLOCK
+export SCFW_HOME="/Users/rocky/.scfw"
+# END SCFW MANAGED BLOCK
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion

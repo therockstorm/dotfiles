@@ -16,6 +16,7 @@ alias c=clear
 alias dcp="docker compose"
 alias nr="node --run"
 alias code="zed"
+zz() { cd "$(zoxide query -i "$@")" }
 
 function codeup {
   local orig_dir=$(pwd)
@@ -32,6 +33,13 @@ function codeup {
 ship() {
   # disable ! expansion within this function so messages can contain '!' without escaping
   set +H
+
+  # If on the default branch, switch to a new rocky/ branch
+  local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+  local current_branch=$(git branch --show-current)
+  if [ "$current_branch" = "$default_branch" ]; then
+    git checkout -b "rocky/$(openssl rand -hex 4)"
+  fi
 
   # Using "$*" lets you add the message without quotes
   gcam "$*" && \
