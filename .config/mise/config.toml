@@ -7,11 +7,6 @@ idiomatic_version_file_enable_tools = ["node"]
 [bootstrap.brew.taps]
 "eugene1g/safehouse" = "https://github.com/eugene1g/homebrew-safehouse.git"
 
-# General dev tools (git, gh, jq, awscli, colima, docker*, rtk) live here so
-# personal machines get them; Clipboard's bootstrap declares them too for
-# other engineers — same key and value, so the layers merge cleanly.
-# Company-specific tools (terraform, ldcli, knock, src-cli, pup, loom, zoom)
-# live only in the Clipboard config.
 [bootstrap.packages]
 "brew:agent-browser" = "latest"
 "brew:awscli" = "latest"
@@ -41,9 +36,7 @@ idiomatic_version_file_enable_tools = ["node"]
 # Not manageable by mise's brew backend — install manually (or via real
 # Homebrew if you install it):
 #   backblaze       cask uses an `installer` artifact mise rejects
-#   sbx             docker/tap doesn't publish the cask API metadata mise needs
 #   cotypist        not in the App Store or Homebrew (direct download)
-#   aws-vpn-client  cask exists but untested under mise; installed via IT
 #   little-snitch   cask exists but needs system-extension approval anyway
 "brew-cask:cmux" = "latest"
 "brew-cask:codexbar" = "latest"
