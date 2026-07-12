@@ -8,9 +8,9 @@ defaults, and login agents are all declared in `.config/mise/config.toml`.
 
 ```sh
 curl -fsSL https://mise.run | sh && export PATH="$HOME/.local/bin:$PATH"
-git clone https://github.com/therockstorm/dotfiles.git ~/dev/trs/dotfiles
+git clone https://github.com/therockstorm/dotfiles.git ~/dev/dotfiles
 mkdir -p ~/.config/mise
-ln -s ~/dev/trs/dotfiles/.config/mise/config.toml ~/.config/mise/config.toml
+ln -s ~/dev/dotfiles/.config/mise/config.toml ~/.config/mise/config.toml
 mise bootstrap --yes
 ```
 

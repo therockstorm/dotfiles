@@ -1,14 +1,3 @@
-# Personal machine configuration — packages, dotfile symlinks, macOS
-# settings, login agents. Standalone: with mise installed and this file
-# symlinked to ~/.config/mise/config.toml, `mise bootstrap --yes` applies
-# everything (see README.md).
-#
-# On a Clipboard machine, clipboard-bootstrap merges the company layer
-# (~/dev/cbh-core/bootstrap/mise.toml) into the same run. Ownership is
-# disjoint so the layers never conflict: work-standard packages (git, gh, jq,
-# awscli, colima, docker, docker-compose, rtk, pmg, 1password*) live there
-# and are NOT repeated here.
-
 [tools]
 node = "lts"
 
@@ -16,41 +5,38 @@ node = "lts"
 idiomatic_version_file_enable_tools = ["node"]
 
 [bootstrap.brew.taps]
-"datadog-labs/pack" = "https://github.com/datadog-labs/homebrew-pack.git"
 "eugene1g/safehouse" = "https://github.com/eugene1g/homebrew-safehouse.git"
-"hashicorp/tap" = "https://github.com/hashicorp/homebrew-tap.git"
-"knocklabs/tap" = "https://github.com/knocklabs/homebrew-tap.git"
-"sourcegraph/src-cli" = "https://github.com/sourcegraph/homebrew-src-cli.git"
 
+# General dev tools (git, gh, jq, awscli, colima, docker*, rtk) live here so
+# personal machines get them; Clipboard's bootstrap declares them too for
+# other engineers — same key and value, so the layers merge cleanly.
+# Company-specific tools (terraform, ldcli, knock, src-cli, pup, loom, zoom)
+# live only in the Clipboard config.
 [bootstrap.packages]
 "brew:agent-browser" = "latest"
+"brew:awscli" = "latest"
+"brew:colima" = "latest"
 "brew:coreutils" = "latest"
-"brew:datadog-labs/pack/pup" = "latest"
+"brew:docker" = "latest"
+"brew:docker-compose" = "latest"
 "brew:eugene1g/safehouse/agent-safehouse" = "latest"
 "brew:eza" = "latest"
 "brew:fzf" = "latest"
+"brew:gh" = "latest"
+"brew:git" = "latest"
 "brew:git-delta" = "latest"
 "brew:gnupg" = "latest"
-"brew:googleworkspace-cli" = "latest"
-"brew:hashicorp/tap/terraform" = "latest"
 "brew:helix" = "latest"
-"brew:knocklabs/tap/knock" = "latest"
-"brew:ldcli" = "latest"
+"brew:jq" = "latest"
 "brew:mole" = "latest"
 "brew:pinentry-mac" = "latest"
 "brew:ripgrep" = "latest"
+"brew:rtk" = "latest"
 "brew:shellcheck" = "latest"
-"brew:sourcegraph/src-cli/src-cli" = "latest"
 "brew:sqlite" = "latest"
 "brew:starship" = "latest"
-"brew:terraform-docs" = "latest"
-"brew:tmux" = "latest"
-"brew:todo-txt" = "latest"
 "brew:typescript-language-server" = "latest"
-"brew:vhs" = "latest"
-"brew:watch" = "latest"
 "brew:watchman" = "latest"
-"brew:webp" = "latest"
 "brew:zoxide" = "latest"
 # Not manageable by mise's brew backend — install manually (or via real
 # Homebrew if you install it):
@@ -62,19 +48,14 @@ idiomatic_version_file_enable_tools = ["node"]
 "brew-cask:cmux" = "latest"
 "brew-cask:codexbar" = "latest"
 "brew-cask:ddpm" = "latest"
-"brew-cask:devutils" = "latest"
 "brew-cask:font-fira-code-nerd-font" = "latest"
 "brew-cask:google-chrome" = "latest"
-"brew-cask:kap" = "latest"
-"brew-cask:loom" = "latest"
 "brew-cask:obsidian" = "latest"
 "brew-cask:raycast" = "latest"
 "brew-cask:signal" = "latest"
 "brew-cask:slack" = "latest"
-"brew-cask:slack-cli" = "latest"
 "brew-cask:superwhisper" = "latest"
 "brew-cask:zed" = "latest"
-"brew-cask:zoom" = "latest"
 # App Store apps via the mas backend; requires the mas CLI (below) and being
 # signed into the App Store. If the first run installs mas and skips these,
 # re-running converges.
@@ -83,20 +64,20 @@ idiomatic_version_file_enable_tools = ["node"]
 "mas:1464122853" = "latest" # NextDNS
 
 [bootstrap.repos]
-"~/dev/trs/dotfiles" = { url = "https://github.com/therockstorm/dotfiles.git" }
+"~/dev/dotfiles" = { url = "https://github.com/therockstorm/dotfiles.git" }
 
 # Symlinked from this repo into $HOME (mode defaults to symlink). The mise
 # config itself is seeded manually first — see README.md. If a real file
 # already exists at a target (e.g. a ~/.zshrc created before this runs),
 # apply with `mise bootstrap --yes --force-dotfiles` to replace it.
 [dotfiles]
-"~/.config/mise/config.toml" = { source = "~/dev/trs/dotfiles/.config/mise/config.toml" }
-"~/.config/starship.toml" = { source = "~/dev/trs/dotfiles/.config/starship.toml" }
-"~/.gnupg/gpg-agent.conf" = { source = "~/dev/trs/dotfiles/.gnupg/gpg-agent.conf" }
-"~/.ssh/config" = { source = "~/dev/trs/dotfiles/.ssh/config" }
-"~/.gitconfig" = { source = "~/dev/trs/dotfiles/.gitconfig" }
-"~/.zshrc" = { source = "~/dev/trs/dotfiles/.zshrc" }
-"~/source" = { source = "~/dev/trs/dotfiles/source" }
+"~/.config/mise/config.toml" = { source = "~/dev/dotfiles/.config/mise/config.toml" }
+"~/.config/starship.toml" = { source = "~/dev/dotfiles/.config/starship.toml" }
+"~/.gnupg/gpg-agent.conf" = { source = "~/dev/dotfiles/.gnupg/gpg-agent.conf" }
+"~/.ssh/config" = { source = "~/dev/dotfiles/.ssh/config" }
+"~/.gitconfig" = { source = "~/dev/dotfiles/.gitconfig" }
+"~/.zshrc" = { source = "~/dev/dotfiles/.zshrc" }
+"~/source" = { source = "~/dev/dotfiles/source" }
 # Agent/editor config. Tools that rewrite files atomically (Claude Code and
 # Zed saving settings) replace the symlink with a real file; `mise bootstrap
 # status` shows the drift — re-link with `mise bootstrap --yes
@@ -114,15 +95,15 @@ idiomatic_version_file_enable_tools = ["node"]
 #   work context: ~/.claude/hooks/ and ~/.config/groundcrew/ reference
 #     internal Clipboard repos — recreate by hand on work machines. Note
 #     settings.json's hooks section points at ~/.claude/hooks scripts.
-"~/.claude/CLAUDE.md" = { source = "~/dev/trs/dotfiles/.claude/CLAUDE.md" }
-"~/.claude/settings.json" = { source = "~/dev/trs/dotfiles/.claude/settings.json" }
-"~/.claude/statusline.sh" = { source = "~/dev/trs/dotfiles/.claude/statusline.sh" }
-"~/.claude/docs" = { source = "~/dev/trs/dotfiles/.claude/docs" }
-"~/.config/zed/settings.json" = { source = "~/dev/trs/dotfiles/.config/zed/settings.json" }
-"~/.config/zed/keymap.json" = { source = "~/dev/trs/dotfiles/.config/zed/keymap.json" }
-"~/.config/helix/config.toml" = { source = "~/dev/trs/dotfiles/.config/helix/config.toml" }
-"~/.config/helix/languages.toml" = { source = "~/dev/trs/dotfiles/.config/helix/languages.toml" }
-"~/.config/gh/config.yml" = { source = "~/dev/trs/dotfiles/.config/gh/config.yml" }
+"~/.claude/CLAUDE.md" = { source = "~/dev/dotfiles/.claude/CLAUDE.md" }
+"~/.claude/settings.json" = { source = "~/dev/dotfiles/.claude/settings.json" }
+"~/.claude/statusline.sh" = { source = "~/dev/dotfiles/.claude/statusline.sh" }
+"~/.claude/docs" = { source = "~/dev/dotfiles/.claude/docs" }
+"~/.config/zed/settings.json" = { source = "~/dev/dotfiles/.config/zed/settings.json" }
+"~/.config/zed/keymap.json" = { source = "~/dev/dotfiles/.config/zed/keymap.json" }
+"~/.config/helix/config.toml" = { source = "~/dev/dotfiles/.config/helix/config.toml" }
+"~/.config/helix/languages.toml" = { source = "~/dev/dotfiles/.config/helix/languages.toml" }
+"~/.config/gh/config.yml" = { source = "~/dev/dotfiles/.config/gh/config.yml" }
 
 [bootstrap.macos.dock]
 autohide = true
@@ -131,6 +112,7 @@ show_recents = false
 
 [bootstrap.macos.finder]
 preferred_view_style = "list"
+show_all_files = true
 
 [bootstrap.macos.defaults.NSGlobalDomain]
 _HIHideMenuBar = true
@@ -148,21 +130,20 @@ wvous-br-corner = 1
 launchanim = false
 show-process-indicators = false
 
-[bootstrap.macos.defaults."com.apple.screencapture"]
-location = "/Users/rocky/Desktop/Screenshots"
-
 # Caps Lock → Escape at login (hidutil mappings don't survive reboot).
 [bootstrap.macos.launchd.agents.caps-to-escape]
-program = "~/dev/trs/dotfiles/bin/caps-to-escape"
+program = "~/dev/dotfiles/bin/caps-to-escape"
 run_at_load = true
 
 # mise runs this task as the final step of `mise bootstrap`. Claude Code and
-# Codex use their native installers (not brew) so updates land ASAP. Guarded,
-# so re-runs are no-ops and it coexists with Clipboard's configure-claude on
-# work machines.
+# Codex use their native installers (not brew) so updates land ASAP. Guarded
+# where possible; rtk init is idempotent. Coexists with Clipboard's
+# configure-claude/configure-security-tools on work machines.
 [tasks.bootstrap]
-description = "Install Claude Code and Codex via their native installers"
+description = "Install Claude Code + Codex (native installers) and init rtk"
 run = [
   'command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash',
   'command -v codex >/dev/null 2>&1 || curl -fsSL https://chatgpt.com/codex/install.sh | sh',
+  'rtk init -g --hook-only',
+  'rtk init -g --codex',
 ]
