@@ -1,0 +1,142 @@
+[tools]
+node = "lts"
+
+[settings]
+idiomatic_version_file_enable_tools = ["node"]
+
+[bootstrap.brew.taps]
+"eugene1g/safehouse" = "https://github.com/eugene1g/homebrew-safehouse.git"
+
+[bootstrap.packages]
+"brew:agent-browser" = "latest"
+"brew:awscli" = "latest"
+"brew:colima" = "latest"
+"brew:coreutils" = "latest"
+"brew:docker" = "latest"
+"brew:docker-compose" = "latest"
+"brew:eugene1g/safehouse/agent-safehouse" = "latest"
+"brew:eza" = "latest"
+"brew:fzf" = "latest"
+"brew:gh" = "latest"
+"brew:git" = "latest"
+"brew:git-delta" = "latest"
+"brew:gnupg" = "latest"
+"brew:helix" = "latest"
+"brew:jq" = "latest"
+"brew:mole" = "latest"
+"brew:pinentry-mac" = "latest"
+"brew:ripgrep" = "latest"
+"brew:rtk" = "latest"
+"brew:shellcheck" = "latest"
+"brew:sqlite" = "latest"
+"brew:starship" = "latest"
+"brew:typescript-language-server" = "latest"
+"brew:watchman" = "latest"
+"brew:zoxide" = "latest"
+# Not manageable by mise's brew backend — install manually (or via real
+# Homebrew if you install it):
+#   backblaze       cask uses an `installer` artifact mise rejects
+#   cotypist        not in the App Store or Homebrew (direct download)
+#   little-snitch   cask exists but needs system-extension approval anyway
+"brew-cask:cmux" = "latest"
+"brew-cask:codexbar" = "latest"
+"brew-cask:ddpm" = "latest"
+"brew-cask:font-fira-code-nerd-font" = "latest"
+"brew-cask:google-chrome" = "latest"
+"brew-cask:obsidian" = "latest"
+"brew-cask:raycast" = "latest"
+"brew-cask:signal" = "latest"
+"brew-cask:slack" = "latest"
+"brew-cask:superwhisper" = "latest"
+"brew-cask:zed" = "latest"
+# App Store apps via the mas backend; requires the mas CLI (below) and being
+# signed into the App Store. If the first run installs mas and skips these,
+# re-running converges.
+"brew:mas" = "latest"
+"mas:937984704" = "latest" # Amphetamine
+"mas:1464122853" = "latest" # NextDNS
+
+[bootstrap.repos]
+"~/dev/dotfiles" = { url = "https://github.com/therockstorm/dotfiles.git" }
+
+# Symlinked from this repo into $HOME (mode defaults to symlink). The mise
+# config itself is seeded manually first — see README.md. If a real file
+# already exists at a target (e.g. a ~/.zshrc created before this runs),
+# apply with `mise bootstrap --yes --force-dotfiles` to replace it.
+[dotfiles]
+"~/.config/mise/config.toml" = { source = "~/dev/dotfiles/.config/mise/config.toml" }
+"~/.config/starship.toml" = { source = "~/dev/dotfiles/.config/starship.toml" }
+"~/.gnupg/gpg-agent.conf" = { source = "~/dev/dotfiles/.gnupg/gpg-agent.conf" }
+"~/.ssh/config" = { source = "~/dev/dotfiles/.ssh/config" }
+"~/.gitconfig" = { source = "~/dev/dotfiles/.gitconfig" }
+"~/.zshrc" = { source = "~/dev/dotfiles/.zshrc" }
+"~/source" = { source = "~/dev/dotfiles/source" }
+# Agent/editor config. Tools that rewrite files atomically (Claude Code and
+# Zed saving settings) replace the symlink with a real file; `mise bootstrap
+# status` shows the drift — re-link with `mise bootstrap --yes
+# --force-dotfiles` after reconciling.
+#
+# NOT tracked (public repo):
+#   secrets: ~/.claude/.credentials.json, ~/.config/gh/hosts.yml,
+#     ~/.codex/auth.json, ~/.config/groundtruth/ (auth only),
+#     ~/.config/groundcrew/op.env (op:// vault refs), ~/.dogrc
+#   ~/.codex entirely: config.toml and rules/ are machine-appended state
+#     (repo trust list, command-approval history) that would republish
+#     internal paths and commands on every commit. Re-set the three real
+#     preferences on a new machine: model, model_reasoning_effort,
+#     personality.
+#   work context: ~/.claude/hooks/ and ~/.config/groundcrew/ reference
+#     internal Clipboard repos — recreate by hand on work machines. Note
+#     settings.json's hooks section points at ~/.claude/hooks scripts.
+"~/.claude/CLAUDE.md" = { source = "~/dev/dotfiles/.claude/CLAUDE.md" }
+"~/.claude/settings.json" = { source = "~/dev/dotfiles/.claude/settings.json" }
+"~/.claude/statusline.sh" = { source = "~/dev/dotfiles/.claude/statusline.sh" }
+"~/.claude/docs" = { source = "~/dev/dotfiles/.claude/docs" }
+"~/.config/zed/settings.json" = { source = "~/dev/dotfiles/.config/zed/settings.json" }
+"~/.config/zed/keymap.json" = { source = "~/dev/dotfiles/.config/zed/keymap.json" }
+"~/.config/helix/config.toml" = { source = "~/dev/dotfiles/.config/helix/config.toml" }
+"~/.config/helix/languages.toml" = { source = "~/dev/dotfiles/.config/helix/languages.toml" }
+"~/.config/gh/config.yml" = { source = "~/dev/dotfiles/.config/gh/config.yml" }
+
+[bootstrap.macos.dock]
+autohide = true
+tilesize = 32
+show_recents = false
+
+[bootstrap.macos.finder]
+preferred_view_style = "list"
+show_all_files = true
+
+[bootstrap.macos.defaults.NSGlobalDomain]
+_HIHideMenuBar = true
+"com.apple.mouse.scaling" = 3.0
+"com.apple.trackpad.scaling" = 3.0
+AppleShowAllExtensions = true
+AppleKeyboardUIMode = 2
+NSAutomaticPeriodSubstitutionEnabled = false
+
+[bootstrap.macos.defaults."com.apple.finder"]
+NewWindowTarget = "PfHm"
+
+[bootstrap.macos.defaults."com.apple.dock"]
+wvous-br-corner = 1
+launchanim = false
+show-process-indicators = false
+
+# Caps Lock → Escape at login (hidutil mappings don't survive reboot).
+[bootstrap.macos.launchd.agents.caps-to-escape]
+program = "~/dev/dotfiles/bin/caps-to-escape"
+run_at_load = true
+
+# mise runs this task as the final step of `mise bootstrap`. Claude Code and
+# Codex use their native installers (not brew) so updates land ASAP. Guarded
+# where possible; rtk init is idempotent. Coexists with Clipboard's
+# configure-claude/configure-security-tools on work machines.
+[tasks.bootstrap]
+description = "Install Claude Code + Codex (native installers) and init rtk"
+run = [
+  'command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash',
+  'command -v codex >/dev/null 2>&1 || curl -fsSL https://chatgpt.com/codex/install.sh | sh',
+  'rtk init -g --hook-only',
+  'rtk init -g --codex',
+]

@@ -5,8 +5,31 @@ alias ll="eza -l --hyperlink --icons=auto"
 alias la="eza -la --hyperlink --icons=auto"
 alias tree="eza -T --hyperlink --icons=auto"  # tree view
 
-# brew
-alias brewup="brew update && brew upgrade && brew cleanup && claude update && claude plugin marketplace update claude-plugins-official && claude plugin marketplace update clipboard"
+# Update agent CLIs and plugin marketplaces. Sequential rather than
+# &&-chained so one failure (e.g. a work-only marketplace on a personal
+# machine) doesn't block the rest.
+agentup() {
+  claude update
+  claude plugin marketplace update claude-plugins-official
+  claude plugin marketplace update clipboard
+  claude plugin marketplace update openai-codex
+  codex update
+}
+
+# Legacy machines where Homebrew owns packages.
+brewup() {
+  brew update && brew upgrade && brew cleanup
+  agentup
+}
+
+# mise-bootstrap machines: mise itself, brew packages/casks (owned by mise —
+# no direct brew commands), and mise-managed tools (node).
+miseup() {
+  mise self-update -y
+  mise bootstrap packages upgrade --yes
+  mise upgrade
+  agentup
+}
 
 # git
 alias gunc="git reset --soft HEAD^"

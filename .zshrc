@@ -36,7 +36,10 @@ zinit wait lucid for \
   atinit"zicompinit; zicdreplay" \
     zdharma-continuum/fast-syntax-highlighting
 
-eval "$(/opt/homebrew/bin/brew shellenv)"
+# mise's brew backend populates /opt/homebrew without the brew executable;
+# shellenv only runs when real Homebrew is installed.
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+[ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
 eval "$(zoxide init zsh)"
 export _ZO_MAXAGE=20000
 export GPG_TTY=$(tty)
@@ -65,6 +68,7 @@ done
 # alias on deferred load, which would conflict with the `npm()` function
 # defined in clipboard/shell.sh.
 unalias npm 2>/dev/null
+[ -f "$HOME/.config/clipboard/shell.zsh" ] && source "$HOME/.config/clipboard/shell.zsh"
 [ -f "$HOME/.config/clipboard/shell.sh" ] && source "$HOME/.config/clipboard/shell.sh"
 
 

@@ -1,0 +1,7 @@
+#!/bin/zsh
+# Remap Caps Lock → Escape via hidutil (Apple TN2450 usage IDs:
+# Caps Lock 0x700000039, Escape 0x700000029). hidutil mappings don't survive
+# reboot, so this runs from a LaunchAgent at login — see personal.example.toml.
+set -euo pipefail
+
+/usr/bin/hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029}]}' > /dev/null

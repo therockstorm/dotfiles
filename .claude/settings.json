@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "DISABLE_AUTOUPDATER": "1",
+    "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
+    "ENABLE_LSP_TOOL": "0",
+    "ENABLE_TOOL_SEARCH": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(bash /Users/rocky/.claude/plugins/marketplaces/clipboard/plugins/core/skills/unresolved-pr-comments/scripts/unresolvedPrComments.sh *)",
+      "Bash(docker compose down)",
+      "Bash(docker compose ls)",
+      "Bash(docker compose up)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr view *)",
+      "Bash(gh repo view *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run watch *)",
+      "Bash(gh workflow list *)",
+      "Bash(gh workflow view *)",
+      "Bash(git add *)",
+      "Bash(git branch *)",
+      "Bash(git checkout -b *)",
+      "Bash(git commit *)",
+      "Bash(git diff *)",
+      "Bash(git fetch *)",
+      "Bash(git find *)",
+      "Bash(git grep *)",
+      "Bash(git log *)",
+      "Bash(git mv *)",
+      "Bash(git show *)",
+      "Bash(git stash list)",
+      "Bash(git stash pop)",
+      "Bash(git stash)",
+      "Bash(git status *)",
+      "Bash(git worktree list *)",
+      "Bash(grep *)",
+      "Bash(head *)",
+      "Bash(jq *)",
+      "Bash(ls *)",
+      "Bash(node --run affected *)",
+      "Bash(node --run all *)",
+      "Bash(node --run check *)",
+      "Bash(node --run ci:check *)",
+      "Bash(node --run embed *)",
+      "Bash(node --run format *)",
+      "Bash(node --run format:check *)",
+      "Bash(node --run hook:pre-commit *)",
+      "Bash(node --run hook:pre-push *)",
+      "Bash(node --run lint *)",
+      "Bash(node --run service-test *)",
+      "Bash(node --run storybook *)",
+      "Bash(node --run test *)",
+      "Bash(node --run test:service *)",
+      "Bash(node --run test:unit *)",
+      "Bash(node --run typecheck *)",
+      "Bash(node --version)",
+      "Bash(npm exec eslint *)",
+      "Bash(npm exec nx build *)",
+      "Bash(npm exec nx lint *)",
+      "Bash(npm exec nx run *)",
+      "Bash(npm exec nx run-many *)",
+      "Bash(npm exec nx test *)",
+      "Bash(npm exec oxlint *)",
+      "Bash(npm exec playwright *)",
+      "Bash(npm exec prettier *)",
+      "Bash(npm exec tsc *)",
+      "Bash(npm exec tsc --noEmit)",
+      "Bash(npm exec tsgo *)",
+      "Bash(npm exec vitest *)",
+      "Bash(npm info *)",
+      "Bash(npm list *)",
+      "Bash(npm run affected *)",
+      "Bash(npm run all *)",
+      "Bash(npm run check *)",
+      "Bash(npm run ci:check *)",
+      "Bash(npm run embed *)",
+      "Bash(npm run format *)",
+      "Bash(npm run format:check *)",
+      "Bash(npm run hook:pre-commit *)",
+      "Bash(npm run hook:pre-push *)",
+      "Bash(npm run lint *)",
+      "Bash(npm run service-test *)",
+      "Bash(npm run storybook *)",
+      "Bash(npm run test *)",
+      "Bash(npm run test:service *)",
+      "Bash(npm run test:unit *)",
+      "Bash(npm run tsc:check *)",
+      "Bash(npm run tsc:check:tsgo *)",
+      "Bash(npm run typecheck *)",
+      "Bash(npm test *)",
+      "Bash(npm view *)",
+      "Bash(npx eslint *)",
+      "Bash(npx nx build *)",
+      "Bash(npx nx lint *)",
+      "Bash(npx nx run *)",
+      "Bash(npx nx run-many *)",
+      "Bash(npx nx test *)",
+      "Bash(npx oxlint *)",
+      "Bash(npx playwright *)",
+      "Bash(npx prettier *)",
+      "Bash(npx tsc *)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsgo *)",
+      "Bash(npx vitest *)",
+      "Bash(oxlint *)",
+      "Bash(pip3 list *)",
+      "Bash(pup *)",
+      "Bash(rg *)",
+      "Bash(rtk *)",
+      "Bash(src search *)",
+      "Bash(tree *)",
+      "Bash(wc *)",
+      "Bash(which *)",
+      "Bash(xargs rg *)",
+      "mcp__plugin_linear_linear__get_issue",
+      "mcp__plugin_linear_linear__list_comments",
+      "mcp__plugin_linear_linear__list_issues",
+      "mcp__plugin_linear_linear__list_projects",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:docs.datadoghq.com)",
+      "WebFetch(domain:docs.devin.ai)",
+      "WebFetch(domain:docs.github.com)",
+      "WebSearch"
+    ],
+    "deny": [
+      "Bash(chmod 777 *)",
+      "Bash(eval *)",
+      "Bash(exec *)",
+      "Bash(git checkout .)",
+      "Bash(git clean -f *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(git restore .)",
+      "Bash(op *)",
+      "Bash(rm -r *)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Read(**/*.key)",
+      "Read(**/*.pem)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(./*.env)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.ssh/**)",
+      "EnterPlanMode",
+      "ExitPlanMode",
+      "AskUserQuestion"
+    ],
+    "defaultMode": "auto"
+  },
+  "model": "claude-fable-5[1m]",
+  "disableClaudeAiConnectors": true,
+  "skillOverrides": {
+    "dd-apm": "off",
+    "dd-code-generation": "off",
+    "cb-to-tasks": "off"
+  },
+  "disableBundledSkills": true,
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "permission_prompt|elicitation_dialog",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay -v 0.35 /System/Library/Sounds/Submarine.aiff"
+          }
+        ]
+      },
+      {
+        "matcher": "feedback_survey",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exit 2"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/rocky/.claude/hooks/block-bash-commands.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/rocky/.claude/hooks/rtk-rewrite.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "disableRemoteControl": false,
+  "disableWorkflows": true,
+  "disableArtifact": true,
+  "statusLine": {
+    "type": "command",
+    "command": "GIT_OPTIONAL_LOCKS=0 /Users/rocky/.claude/statusline.sh"
+  },
+  "enabledPlugins": {
+    "core@clipboard": true,
+    "frontend-design@claude-plugins-official": true,
+    "linear@claude-plugins-official": true,
+    "slack@claude-plugins-official": false,
+    "codex@openai-codex": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "clipboard": {
+      "source": {
+        "source": "github",
+        "repo": "ClipboardHealth/core-utils"
+      }
+    },
+    "openai-codex": {
+      "source": {
+        "source": "github",
+        "repo": "openai/codex-plugin-cc"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "tui": "fullscreen",
+  "autoMemoryEnabled": false,
+  "skipDangerousModePermissionPrompt": true,
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true
+}
