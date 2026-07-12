@@ -19,12 +19,11 @@
 [delta]
   navigate = true
 [gpg]
-  program = gpg
   format = ssh
 [interactive]
   diffFilter = delta --color-only
 [merge]
-  con1flictstyle = diff3
+  conflictstyle = diff3
   tool = zed
 [mergetool]
   keepBackup = false
@@ -33,7 +32,7 @@
 [pager]
   difftool = true
 [pull]
-  rebase = false
+  rebase = true
 [init]
   defaultBranch = main
 [rerere]
@@ -41,7 +40,7 @@
 [tag]
   gpgsign = true
 [user]
-  email = rocky@clipboardhealth.com
+  email = 1085683+therockstorm@users.noreply.github.com
   name = Rocky Warren
   signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIINCFUtIiP7+XYUkuLHHbGlzDUi6Su51pppnV0YPw7qd id_ed25519 GitHub
 [filter "lfs"]
@@ -49,33 +48,11 @@
   required = true
   clean = git-lfs clean -- %f
   smudge = git-lfs smudge -- %f
-[includeIf "gitdir:~/dev/c/"]
-  path = ~/.gitconfig-cbh
-[includeIf "gitdir:~/Documents/Obsidian\ Vault/prompts/"]
-  path = ~/.gitconfig-cbh
-[alias]
-  fpush = push
-  append = town append
-  hack = town hack
-  propose = town propose
-  ship = town ship
-  sync = town sync
-[git-town]
-  main-branch = main
-  new-branch-type = feature
-  forge-type = github
-  github-connector = gh
-  unknown-branch-type = feature
-  push-hook = true
-  share-new-branches = no
-  ship-strategy = squash-merge
-  ship-delete-tracking-branch = true
-  sync-feature-strategy = rebase
-  sync-perennial-strategy = ff-only
-  sync-prototype-strategy = rebase
-  sync-upstream = true
-  sync-tags = true
-[coderabbit]
-  machineId = cli/30f5e82b15d04703839471d0c39c0fb6
 [gpg "ssh"]
   program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+[includeIf "gitdir:~/dev/c/"]
+  path = ~/.gitconfig-clipboard
+[coderabbit]
+  machineId = cli/8a65971be4d34d20a0f6549a2aaf1679
+[url "https://github.com/"]
+  insteadOf = git@github.com:

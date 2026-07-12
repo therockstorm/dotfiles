@@ -13,3 +13,6 @@ us-east-1 = "us-e1"
 us-east-2 = "us-e2"
 us-west-1 = "us-w1"
 us-west-2 = "us-w2"
+
+[gcloud]
+disabled = true

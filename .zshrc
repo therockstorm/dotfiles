@@ -52,21 +52,31 @@ bindkey '^[[1;3C' forward-word
 bindkey '^[[1;3D' backward-word
 
 export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
-export PATH="$PATH:/Users/rocky/.local/bin"
+export PATH="$HOME/.local/bin:$PATH"
 
 # Source files (aliases, exports, work)
-for file in ~/source/*.zsh; do
+for file in $HOME/source/*.zsh; do
   source "$file"
 done
 
 # Clipboard shell config (includes op completion; compdef calls are
-# replayed by zicdreplay once zinit's deferred compinit runs)
+# replayed by zicdreplay once zinit's deferred compinit runs).
+# unalias npm so re-sourcing this file works — OMZP::npm sets an `npm`
+# alias on deferred load, which would conflict with the `npm()` function
+# defined in clipboard/shell.sh.
+unalias npm 2>/dev/null
 [ -f "$HOME/.config/clipboard/shell.sh" ] && source "$HOME/.config/clipboard/shell.sh"
 
-# BEGIN SCFW MANAGED BLOCK
-export SCFW_HOME="/Users/rocky/.scfw"
-# END SCFW MANAGED BLOCK
 
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# remove aliases by running `pmg setup remove` or deleting the line 
+[ -f '/Users/rocky/.pmg.rc' ] && source '/Users/rocky/.pmg.rc'  # PMG source aliases
+
+# remove PMG shims by running `pmg setup remove` or deleting the line
+export PATH="/Users/rocky/.pmg/bin:$PATH"  # PMG shims
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/Users/rocky/dev/c/clipboard/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/rocky/dev/c/clipboard/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '/Users/rocky/dev/c/clipboard/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/rocky/dev/c/clipboard/google-cloud-sdk/completion.zsh.inc'; fi
