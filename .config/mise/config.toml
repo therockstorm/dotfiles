@@ -156,14 +156,18 @@ set -euo pipefail
 # of which is on the invoking shell's PATH yet.
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
 command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
-command -v codex >/dev/null 2>&1 || curl -fsSL https://chatgpt.com/codex/install.sh | sh
+# CODEX_NON_INTERACTIVE: the installer's "Start Codex now?" prompt reads
+# /dev/tty and hangs the bootstrap otherwise.
+command -v codex >/dev/null 2>&1 || curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
 rtk init -g --hook-only
 rtk init -g --codex
 # Load the caps-to-escape LaunchAgent ([dotfiles] copies the plist; see the
 # comment there for why mise's launchd module isn't used). RunAtLoad fires
 # the remap immediately; already-loaded is the common case after first run.
+# enable comes FIRST: bootstrap of a disabled label fails (with the same
+# generic EIO), and enable works fine on a not-yet-loaded service.
 launchctl print "gui/$(id -u)/caps-to-escape" >/dev/null 2>&1 || {
-  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/caps-to-escape.plist"
   launchctl enable "gui/$(id -u)/caps-to-escape"
+  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/caps-to-escape.plist"
 }
 """
