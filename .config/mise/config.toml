@@ -46,6 +46,9 @@ idiomatic_version_file_enable_tools = ["node"]
 #   raycast         extension-less download URL: mise saves the dmg as
 #                   `download`, detects only zip by magic bytes, and fails
 #                   with "app artifact 'Raycast.app' was not found"
+#   amphetamine     App Store; mas installs bind to whichever Apple ID the
+#   nextdns         machine is signed into, which is wrong on company-owned
+#                   machines — install from the App Store by hand
 "brew-cask:cmux" = "latest"
 "brew-cask:codexbar" = "latest"
 "brew-cask:ddpm" = "latest"
@@ -56,12 +59,6 @@ idiomatic_version_file_enable_tools = ["node"]
 "brew-cask:slack" = "latest"
 "brew-cask:superwhisper" = "latest"
 "brew-cask:zed" = "latest"
-# App Store apps via the mas backend; requires the mas CLI (below) and being
-# signed into the App Store. If the first run installs mas and skips these,
-# re-running converges.
-"brew:mas" = "latest"
-"mas:937984704" = "latest" # Amphetamine
-"mas:1464122853" = "latest" # NextDNS
 
 [bootstrap.repos]
 "~/dev/dotfiles" = { url = "https://github.com/therockstorm/dotfiles.git" }
