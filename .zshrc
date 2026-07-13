@@ -36,9 +36,11 @@ zinit wait lucid for \
   atinit"zicompinit; zicdreplay" \
     zdharma-continuum/fast-syntax-highlighting
 
-# mise's brew backend populates /opt/homebrew without the brew executable;
-# shellenv only runs when real Homebrew is installed.
-export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+# ~/.local/bin first: mise lives there on mise-bootstrap machines and is
+# invoked below, before the later PATH exports would run. mise's brew
+# backend populates /opt/homebrew without the brew executable; shellenv
+# only runs when real Homebrew is installed.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
 eval "$(zoxide init zsh)"
 export _ZO_MAXAGE=20000
@@ -58,8 +60,6 @@ unset _op_agent
 bindkey '^U' backward-kill-line
 bindkey '^[[1;3C' forward-word
 bindkey '^[[1;3D' backward-word
-
-export PATH="$HOME/.local/bin:$PATH"
 
 # Source files (aliases, exports); (N) so a missing ~/source doesn't abort.
 for file in $HOME/source/*.zsh(N); do
