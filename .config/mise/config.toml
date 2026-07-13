@@ -1,11 +1,13 @@
 [tools]
 node = "lts"
+# Not brew: mise's brew backend only installs tap formulas whose tap
+# publishes api/formula/<name>.json, which eugene1g/safehouse doesn't.
+# ubi pulls the release asset directly; exe maps it to `safehouse`, the
+# command name the brew formula would have installed.
+"ubi:eugene1g/agent-safehouse" = { version = "latest", exe = "safehouse" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
-
-[bootstrap.brew.taps]
-"eugene1g/safehouse" = "https://github.com/eugene1g/homebrew-safehouse.git"
 
 [bootstrap.packages]
 "brew:agent-browser" = "latest"
@@ -14,7 +16,6 @@ idiomatic_version_file_enable_tools = ["node"]
 "brew:coreutils" = "latest"
 "brew:docker" = "latest"
 "brew:docker-compose" = "latest"
-"brew:eugene1g/safehouse/agent-safehouse" = "latest"
 "brew:eza" = "latest"
 "brew:fzf" = "latest"
 "brew:gh" = "latest"
