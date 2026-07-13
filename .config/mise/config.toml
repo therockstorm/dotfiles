@@ -2,9 +2,10 @@
 node = "lts"
 # Not brew: mise's brew backend only installs tap formulas whose tap
 # publishes api/formula/<name>.json, which eugene1g/safehouse doesn't.
-# ubi pulls the release asset directly; exe maps it to `safehouse`, the
-# command name the brew formula would have installed.
-"ubi:eugene1g/agent-safehouse" = { version = "latest", exe = "safehouse" }
+# The github backend pulls the release asset directly; bin renames the
+# bare script to `safehouse`, the command the brew formula installed.
+# (ubi can't rename bare single-file assets — it keeps safehouse.sh.)
+"github:eugene1g/agent-safehouse" = { version = "latest", asset_pattern = "safehouse.sh", bin = "safehouse" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
