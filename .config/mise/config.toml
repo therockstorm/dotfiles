@@ -104,7 +104,7 @@ set -euo pipefail
 # ~/.local/bin and Homebrew tools in /opt/homebrew/bin, neither of which is on
 # the invoking shell's PATH yet.
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
-brew bundle --file "$HOME/dev/dotfiles/Brewfile"
+brew bundle --no-upgrade --file "$HOME/dev/dotfiles/Brewfile"
 command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
 # CODEX_NON_INTERACTIVE: the installer's "Start Codex now?" prompt reads
 # /dev/tty and hangs the bootstrap otherwise.

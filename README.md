@@ -17,7 +17,7 @@ before continuing. The script installs Homebrew and mise, clones this repo to
 (`~/.config/mise/config.toml`), and hands off to `mise bootstrap --yes`.
 
 Re-run `mise bootstrap` any time to converge; its final task runs
-`brew bundle --file ~/dev/dotfiles/Brewfile`. `mise bootstrap status` shows
+`brew bundle --no-upgrade --file ~/dev/dotfiles/Brewfile`. `mise bootstrap status` shows
 mise-managed drift. If a real file already exists at a symlink target, add
 `--force-dotfiles`.
 
@@ -43,7 +43,7 @@ Command Line Tools dialog, enter an administrator password for Homebrew, and
 complete any vendor installer or permission prompts (notably Backblaze and AWS
 VPN Client). Add `--force-dotfiles` when targets exist as real files. Verify
 with `mise bootstrap status` (no missing entries),
-`brew bundle check --file ~/dev/dotfiles/Brewfile` and
+`brew bundle check --no-upgrade --file ~/dev/dotfiles/Brewfile` and
 `zsh -ic 'starship --version'`.
 
 ## Work machines
