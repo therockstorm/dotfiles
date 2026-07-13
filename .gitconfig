@@ -58,16 +58,5 @@
   path = /Users/rocky/.gitconfig-clipboard
 [includeIf "hasconfig:remote.*.url:git@github.com:ClipboardHealth/**"]
   path = /Users/rocky/.gitconfig-clipboard
-# URL variants seen on real checkouts, which the canonical patterns above
-# miss: embedded userinfo (https://user@github.com/…) and non-canonical
-# org-name casing (matching is case-sensitive). Written so no remote matches
-# twice — git applies every matching includeIf, and a double include would
-# duplicate any multi-valued key the work overlay ever grows.
-[includeIf "hasconfig:remote.*.url:https://*@github.com/ClipboardHealth/**"]
-  path = /Users/rocky/.gitconfig-clipboard
-[includeIf "hasconfig:remote.*.url:https://github.com/clipboard[Hh]ealth/**"]
-  path = /Users/rocky/.gitconfig-clipboard
-[includeIf "hasconfig:remote.*.url:https://github.com/Clipboardhealth/**"]
-  path = /Users/rocky/.gitconfig-clipboard
 [url "https://github.com/"]
   insteadOf = git@github.com:
