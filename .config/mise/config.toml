@@ -142,6 +142,10 @@ NewWindowTarget = "PfHm"
 wvous-br-corner = 1
 launchanim = false
 show-process-indicators = false
+# Only running apps in the Dock — no pinned icons. (Clearing pinned apps
+# outright needs an array write, which raw defaults entries can't express;
+# static-only converges to the same minimal Dock declaratively.)
+static-only = true
 
 # mise runs this task as the final step of `mise bootstrap`. Claude Code and
 # Codex use their native installers (not brew) so updates land ASAP. Guarded
@@ -164,10 +168,10 @@ rtk init -g --codex
 # Load the caps-to-escape LaunchAgent ([dotfiles] copies the plist; see the
 # comment there for why mise's launchd module isn't used). RunAtLoad fires
 # the remap immediately; already-loaded is the common case after first run.
-# enable comes FIRST: bootstrap of a disabled label fails (with the same
-# generic EIO), and enable works fine on a not-yet-loaded service.
-launchctl print "gui/$(id -u)/caps-to-escape" >/dev/null 2>&1 || {
-  launchctl enable "gui/$(id -u)/caps-to-escape"
-  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/caps-to-escape.plist"
-}
+# enable runs unconditionally and before bootstrap: it clears a disabled
+# override whether or not the service is loaded (disable persists across
+# logins and makes bootstrap fail with a generic EIO), and no-ops otherwise.
+launchctl enable "gui/$(id -u)/caps-to-escape"
+launchctl print "gui/$(id -u)/caps-to-escape" >/dev/null 2>&1 \
+  || launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/caps-to-escape.plist"
 """
