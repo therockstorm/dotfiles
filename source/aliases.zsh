@@ -21,17 +21,12 @@ agentup() {
   codex update
 }
 
-# Legacy machines where Homebrew owns packages.
-brewup() {
-  brew update && brew upgrade && brew cleanup
-  agentup
-}
-
-# mise-bootstrap machines: mise itself, brew packages/casks (owned by mise —
-# no direct brew commands), and mise-managed tools (node).
+# Homebrew system packages/casks, mise itself, and mise-managed runtimes.
 miseup() {
-  mise self-update -y
-  mise bootstrap packages upgrade --yes
+  brew update && brew upgrade && brew cleanup
+  # Older machines installed mise with Homebrew; stage-one installs update
+  # themselves. Avoid asking a package-manager install to self-update.
+  brew list mise >/dev/null 2>&1 || mise self-update -y
   mise upgrade
   agentup
 }

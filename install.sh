@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Stage-one installer: Xcode Command Line Tools, mise, repo clone, seed
-# symlink, converge. Idempotent — rerun at any point.
+# Stage-one installer: Xcode Command Line Tools, Homebrew, mise, repo clone,
+# seed symlink, converge. Idempotent — rerun at any point.
 #
 #   curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/install.sh | bash
 set -euo pipefail
@@ -28,12 +28,17 @@ if [ "$(uname -m)" = "arm64" ] && ! /usr/bin/pgrep -q oahd; then
   sudo softwareupdate --install-rosetta --agree-to-license
 fi
 
+if [ ! -x /opt/homebrew/bin/brew ]; then
+  echo "■ Installing Homebrew (your password may be requested)..."
+  sudo -v
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
 if ! command -v mise >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/mise" ]; then
   echo "■ Installing mise..."
   curl -fsSL https://mise.run | sh
 fi
-# /opt/homebrew/bin: mise's brew backend installs CLIs there that later
-# bootstrap steps may invoke within this same run.
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
 
 REPO_URL="https://github.com/therockstorm/dotfiles.git"
