@@ -109,6 +109,14 @@ idiomatic_version_file_enable_tools = ["node"]
 # ~/.config/op/{linear,src,status-update}.env. npm.env is written by the
 # employer bootstrap; don't create it by hand.
 "~/.config/op/ai.env" = { source = "~/dev/dotfiles/.config/op/ai.env" }
+# Caps Lock → Escape at login (hidutil mappings don't survive reboot).
+# Deliberately NOT [bootstrap.macos.launchd.agents]: mise's apply always
+# runs `launchctl bootout <domain> <path>` first, and on current macOS that
+# returns EIO (not "no such process") for a never-loaded service, failing
+# the first apply on every fresh machine. mise copies the plist; the guarded
+# launchctl load lives in [tasks.bootstrap]. Copied, not symlinked — launchd
+# is unreliable with symlinked agent plists.
+"~/Library/LaunchAgents/caps-to-escape.plist" = { source = "~/dev/dotfiles/.config/launchd/caps-to-escape.plist", mode = "copy" }
 
 [bootstrap.macos.dock]
 autohide = true
@@ -135,17 +143,12 @@ wvous-br-corner = 1
 launchanim = false
 show-process-indicators = false
 
-# Caps Lock → Escape at login (hidutil mappings don't survive reboot).
-[bootstrap.macos.launchd.agents.caps-to-escape]
-program = "~/dev/dotfiles/bin/caps-to-escape"
-run_at_load = true
-
 # mise runs this task as the final step of `mise bootstrap`. Claude Code and
 # Codex use their native installers (not brew) so updates land ASAP. Guarded
 # where possible; rtk init is idempotent. Coexists with employer bootstraps
 # on work machines.
 [tasks.bootstrap]
-description = "Install Claude Code + Codex (native installers) and init rtk"
+description = "Install Claude Code + Codex, init rtk, load caps-to-escape"
 run = """
 set -euo pipefail
 # First run happens before any login shell: claude/codex land in
@@ -156,4 +159,11 @@ command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | b
 command -v codex >/dev/null 2>&1 || curl -fsSL https://chatgpt.com/codex/install.sh | sh
 rtk init -g --hook-only
 rtk init -g --codex
+# Load the caps-to-escape LaunchAgent ([dotfiles] copies the plist; see the
+# comment there for why mise's launchd module isn't used). RunAtLoad fires
+# the remap immediately; already-loaded is the common case after first run.
+launchctl print "gui/$(id -u)/caps-to-escape" >/dev/null 2>&1 || {
+  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/caps-to-escape.plist"
+  launchctl enable "gui/$(id -u)/caps-to-escape"
+}
 """
