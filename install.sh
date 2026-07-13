@@ -32,9 +32,8 @@ if ! command -v mise >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/mise" ]; then
   echo "■ Installing mise..."
   curl -fsSL https://mise.run | sh
 fi
-# /opt/homebrew/bin: mise's brew backend installs CLIs there (including mas)
-# that later bootstrap steps invoke — without it on PATH, mas: packages are
-# skipped with "mas not found" on the first run.
+# /opt/homebrew/bin: mise's brew backend installs CLIs there that later
+# bootstrap steps may invoke within this same run.
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
 
 REPO_URL="https://github.com/therockstorm/dotfiles.git"

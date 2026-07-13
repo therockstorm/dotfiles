@@ -1,8 +1,8 @@
 # dotfiles
 
 Machine configuration, converged by [mise](https://mise.jdx.dev/): packages
-(Homebrew formulae/casks and App Store apps), dotfile symlinks, macOS
-defaults, and login agents are all declared in `.config/mise/config.toml`.
+(Homebrew formulae/casks), dotfile symlinks, macOS defaults, and login
+agents are all declared in `.config/mise/config.toml`.
 
 ## Installation
 
@@ -22,21 +22,20 @@ drift. If a real file already exists at a symlink target, add
 
 Manual steps not yet automated:
 
-- Sign into the App Store before the first run so `mas:` apps install.
-- Install Backblaze, sbx, Cotypist, AWS VPN Client, Little Snitch, and
-  Raycast (see notes in `.config/mise/config.toml`).
+- Install Backblaze, sbx, Cotypist, AWS VPN Client, Little Snitch, Raycast,
+  and the App Store apps Amphetamine and NextDNS (see notes in
+  `.config/mise/config.toml`).
 - Optionally run `bin/remove-preinstalled-apps` once to delete the iLife/iWork
   suite (prompts before deleting; SIP-protected apps can only be hidden).
 - System Settings > Displays > Night Shift > Schedule.
 
 ## Agent notes
 
-For an AI agent: run the Installation one-liner. Human-required steps: the
-Command Line Tools dialog on a fresh Mac (the script waits for it) and
-signing into the App Store (required before `mas:` packages install —
-skipped entries converge on re-run). Add `--force-dotfiles` when targets
-exist as real files. Verify with `mise bootstrap status` (no missing
-entries) and `zsh -ic 'starship --version'`.
+For an AI agent: run the Installation one-liner. The only human-required
+step is the Command Line Tools dialog on a fresh Mac (the script waits for
+it). Add `--force-dotfiles` when targets exist as real files. Verify with
+`mise bootstrap status` (no missing entries) and
+`zsh -ic 'starship --version'`.
 
 ## Work machines
 
