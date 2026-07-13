@@ -43,13 +43,15 @@ idiomatic_version_file_enable_tools = ["node"]
 #   backblaze       cask uses an `installer` artifact mise rejects
 #   cotypist        not in the App Store or Homebrew (direct download)
 #   little-snitch   cask exists but needs system-extension approval anyway
+#   raycast         extension-less download URL: mise saves the dmg as
+#                   `download`, detects only zip by magic bytes, and fails
+#                   with "app artifact 'Raycast.app' was not found"
 "brew-cask:cmux" = "latest"
 "brew-cask:codexbar" = "latest"
 "brew-cask:ddpm" = "latest"
 "brew-cask:font-fira-code-nerd-font" = "latest"
 "brew-cask:google-chrome" = "latest"
 "brew-cask:obsidian" = "latest"
-"brew-cask:raycast" = "latest"
 "brew-cask:signal" = "latest"
 "brew-cask:slack" = "latest"
 "brew-cask:superwhisper" = "latest"

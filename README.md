@@ -23,8 +23,8 @@ drift. If a real file already exists at a symlink target, add
 Manual steps not yet automated:
 
 - Sign into the App Store before the first run so `mas:` apps install.
-- Install Backblaze, sbx, Cotypist, AWS VPN Client, and Little Snitch (see
-  notes in `.config/mise/config.toml`).
+- Install Backblaze, sbx, Cotypist, AWS VPN Client, Little Snitch, and
+  Raycast (see notes in `.config/mise/config.toml`).
 - Optionally run `bin/remove-preinstalled-apps` once to delete the iLife/iWork
   suite (prompts before deleting; SIP-protected apps can only be hidden).
 - System Settings > Displays > Night Shift > Schedule.
