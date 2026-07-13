@@ -7,17 +7,18 @@ defaults, and login agents are all declared in `.config/mise/config.toml`.
 ## Installation
 
 ```sh
-curl -fsSL https://mise.run | sh && export PATH="$HOME/.local/bin:$PATH"
-git clone https://github.com/therockstorm/dotfiles.git ~/dev/dotfiles
-mkdir -p ~/.config/mise
-ln -s ~/dev/dotfiles/.config/mise/config.toml ~/.config/mise/config.toml
-mise bootstrap --yes
+curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/install.sh | bash
 ```
 
-The seed `ln -s` exists because mise can't symlink its own config before
-reading it; every other symlink is declared in `[dotfiles]`. Re-run
-`mise bootstrap` any time to converge; `mise bootstrap status` shows drift.
-If a real file already exists at a symlink target, add `--force-dotfiles`.
+Idempotent — rerun at any point. On a brand-new Mac it triggers Apple's
+Command Line Tools dialog (accept it) and waits for that install to finish
+before continuing. The script installs mise, clones this repo to
+`~/dev/dotfiles`, seeds the one symlink mise can't create for itself
+(`~/.config/mise/config.toml`), and hands off to `mise bootstrap --yes`.
+
+Re-run `mise bootstrap` any time to converge; `mise bootstrap status` shows
+drift. If a real file already exists at a symlink target, add
+`--force-dotfiles`.
 
 Manual steps not yet automated:
 
@@ -30,11 +31,12 @@ Manual steps not yet automated:
 
 ## Agent notes
 
-For an AI agent: the Installation block above is fully scriptable except
-signing into the App Store (required before `mas:` packages install — skipped
-entries converge on re-run). Add `--force-dotfiles` when targets exist as
-real files. Verify with `mise bootstrap status` (no missing entries) and
-`zsh -ic 'starship --version'`.
+For an AI agent: run the Installation one-liner. Human-required steps: the
+Command Line Tools dialog on a fresh Mac (the script waits for it) and
+signing into the App Store (required before `mas:` packages install —
+skipped entries converge on re-run). Add `--force-dotfiles` when targets
+exist as real files. Verify with `mise bootstrap status` (no missing
+entries) and `zsh -ic 'starship --version'`.
 
 ## Work machines
 
