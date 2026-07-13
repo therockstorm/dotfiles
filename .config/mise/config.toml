@@ -100,6 +100,7 @@ idiomatic_version_file_enable_tools = ["node"]
 "~/.claude/docs" = { source = "~/dev/dotfiles/.claude/docs" }
 "~/.config/zed/settings.json" = { source = "~/dev/dotfiles/.config/zed/settings.json" }
 "~/.config/zed/keymap.json" = { source = "~/dev/dotfiles/.config/zed/keymap.json" }
+"~/.config/ghostty/config" = { source = "~/dev/dotfiles/.config/ghostty/config" }
 "~/.config/helix/config.toml" = { source = "~/dev/dotfiles/.config/helix/config.toml" }
 "~/.config/helix/languages.toml" = { source = "~/dev/dotfiles/.config/helix/languages.toml" }
 "~/.config/gh/config.yml" = { source = "~/dev/dotfiles/.config/gh/config.yml" }

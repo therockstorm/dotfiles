@@ -1,0 +1,8 @@
+# Ghostty config — read by standalone Ghostty and by cmux's bundled ghostty.
+# macOS also reads ~/Library/Application Support/com.mitchellh.ghostty/config,
+# whose keys override this file — don't edit that copy.
+# Docs: ghostty +show-config --default --docs
+
+font-family = "FiraCode Nerd Font Mono"
+
+theme = Modus Vivendi
