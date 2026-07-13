@@ -5,7 +5,10 @@ node = "lts"
 # The github backend pulls the release asset directly; bin renames the
 # bare script to `safehouse`, the command the brew formula installed.
 # (ubi can't rename bare single-file assets — it keeps safehouse.sh.)
-"github:eugene1g/agent-safehouse" = { version = "latest", asset_pattern = "safehouse.sh", bin = "safehouse" }
+# Pinned to match the employer bootstrap's configure-security-tools,
+# which rewrites any other declared version to its pin; keeping parity
+# means it skips instead of dirtying this file. Bump both together.
+"github:eugene1g/agent-safehouse" = { version = "0.11.0", asset_pattern = "safehouse.sh", bin = "safehouse" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]

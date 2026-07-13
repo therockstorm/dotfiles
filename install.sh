@@ -21,11 +21,21 @@ if ! xcode-select -p >/dev/null 2>&1; then
   echo " done"
 fi
 
+# Intel-only casks (ddpm) need Rosetta 2. oahd is Rosetta's daemon — present
+# only once it's installed. sudo prompts on the terminal.
+if [ "$(uname -m)" = "arm64" ] && ! /usr/bin/pgrep -q oahd; then
+  echo "■ Installing Rosetta 2 (your password may be requested)..."
+  sudo softwareupdate --install-rosetta --agree-to-license
+fi
+
 if ! command -v mise >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/mise" ]; then
   echo "■ Installing mise..."
   curl -fsSL https://mise.run | sh
 fi
-export PATH="$HOME/.local/bin:$PATH"
+# /opt/homebrew/bin: mise's brew backend installs CLIs there (including mas)
+# that later bootstrap steps invoke — without it on PATH, mas: packages are
+# skipped with "mas not found" on the first run.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
 
 REPO_URL="https://github.com/therockstorm/dotfiles.git"
 if [ -d "$DOTFILES/.git" ]; then
