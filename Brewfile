@@ -1,6 +1,8 @@
 tap "eugene1g/safehouse"
 
 brew "agent-browser"
+# Trust is scoped to this named third-party package so Homebrew may load its tap
+# definition; normal bottle and download verification still applies.
 brew "eugene1g/safehouse/agent-safehouse", trusted: true
 brew "awscli"
 brew "colima"
