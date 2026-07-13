@@ -1,7 +1,26 @@
 #!/bin/zsh
+# cspell:words hidutil plutil
 # Remap Caps Lock → Escape via hidutil (Apple TN2450 usage IDs:
 # Caps Lock 0x700000039, Escape 0x700000029). hidutil mappings don't survive
-# reboot, so this runs from a LaunchAgent at login — see personal.example.toml.
+# reboot, so this runs from a LaunchAgent at login — see .config/mise/config.toml.
 set -euo pipefail
 
-/usr/bin/hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029}]}' > /dev/null
+current="$(/usr/bin/hidutil property --get UserKeyMapping)"
+if [[ "$current" == "(null)" ]]; then
+  mappings='[]'
+else
+  mappings="$(printf '%s\n' "$current" | /usr/bin/plutil -convert json -o - -- -)"
+fi
+
+source_key=$((0x700000039))
+destination_key=$((0x700000029))
+# Absolute path: LaunchAgents run with a minimal PATH that excludes /opt/homebrew/bin.
+# plutil renders OpenStep's untyped numbers as JSON strings; normalize back to
+# numbers (tonumber) or the $source dedup never matches and every login
+# appends a duplicate mapping.
+payload="$(/opt/homebrew/bin/jq -cn \
+  --argjson mappings "$mappings" \
+  --argjson source "$source_key" \
+  --argjson destination "$destination_key" \
+  '{UserKeyMapping: ([$mappings[] | map_values(tonumber? // .) | select(.HIDKeyboardModifierMappingSrc != $source)] + [{HIDKeyboardModifierMappingSrc: $source, HIDKeyboardModifierMappingDst: $destination}])}')"
+/usr/bin/hidutil property --set "$payload" > /dev/null

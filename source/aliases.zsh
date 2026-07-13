@@ -5,14 +5,19 @@ alias ll="eza -l --hyperlink --icons=auto"
 alias la="eza -la --hyperlink --icons=auto"
 alias tree="eza -T --hyperlink --icons=auto"  # tree view
 
-# Update agent CLIs and plugin marketplaces. Sequential rather than
-# &&-chained so one failure (e.g. a work-only marketplace on a personal
-# machine) doesn't block the rest.
+# Inject a scope of 1Password secrets into ONE subprocess — nothing is ever
+# exported into the shell. Scopes are pointer files (op:// refs, no secret
+# values) in ~/.config/op/<scope>.env. Usage: ops ai node script.mjs
+ops() { op run --env-file="$HOME/.config/op/$1.env" -- "${@:2}"; }
+
+# Update agent CLIs and every installed plugin marketplace. Sequential
+# rather than &&-chained so one failure doesn't block the rest.
 agentup() {
   claude update
-  claude plugin marketplace update claude-plugins-official
-  claude plugin marketplace update clipboard
-  claude plugin marketplace update openai-codex
+  local m
+  for m in "$HOME/.claude/plugins/marketplaces"/*(N/:t); do
+    claude plugin marketplace update "$m"
+  done
   codex update
 }
 
@@ -39,12 +44,6 @@ alias c=clear
 alias dcp="docker compose"
 alias nr="node --run"
 alias code="zed"
-
-DEV_DIR="$HOME/dev/c"
-SAFEHOUSE="${DEV_DIR}/core-utils/packages/clearance/safehouse"
-
-alias codex-proxy="$SAFEHOUSE/safehouse-clearance codex --dangerously-bypass-approvals-and-sandbox"
-alias claude-proxy="$SAFEHOUSE/safehouse-claude-proxy"
 
 zz() { cd "$(zoxide query -i "$@")" }
 

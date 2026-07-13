@@ -48,39 +48,31 @@ eval "$(starship init zsh)"
 eval "$(mise activate zsh)"
 
 HIST_STAMPS="yyyy-mm-dd"
-SSH_AUTH_SOCK="$HOME/.ssh/agent"
+
+# 1Password SSH agent. ssh itself uses IdentityAgent from ~/.ssh/config; the
+# env var covers everything else that talks to an agent (ssh-add -L, git, …).
+_op_agent="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+[ -S "$_op_agent" ] && export SSH_AUTH_SOCK="$_op_agent"
+unset _op_agent
 
 bindkey '^U' backward-kill-line
 bindkey '^[[1;3C' forward-word
 bindkey '^[[1;3D' backward-word
 
-export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 
-# Source files (aliases, exports, work)
-for file in $HOME/source/*.zsh; do
+# Source files (aliases, exports); (N) so a missing ~/source doesn't abort.
+for file in $HOME/source/*.zsh(N); do
   source "$file"
 done
 
-# Clipboard shell config (includes op completion; compdef calls are
-# replayed by zicdreplay once zinit's deferred compinit runs).
-# unalias npm so re-sourcing this file works — OMZP::npm sets an `npm`
-# alias on deferred load, which would conflict with the `npm()` function
-# defined in clipboard/shell.sh.
+# Employer shell config, if this machine has one. Kept here because employer
+# bootstraps can't append to a symlinked ~/.zshrc; inert elsewhere. unalias
+# npm first — OMZP::npm's deferred alias would shadow the npm() wrapper
+# defined inside, and it keeps re-sourcing this file idempotent.
 unalias npm 2>/dev/null
 [ -f "$HOME/.config/clipboard/shell.zsh" ] && source "$HOME/.config/clipboard/shell.zsh"
-[ -f "$HOME/.config/clipboard/shell.sh" ] && source "$HOME/.config/clipboard/shell.sh"
 
-
-
-# remove aliases by running `pmg setup remove` or deleting the line 
-[ -f '/Users/rocky/.pmg.rc' ] && source '/Users/rocky/.pmg.rc'  # PMG source aliases
-
-# remove PMG shims by running `pmg setup remove` or deleting the line
-export PATH="/Users/rocky/.pmg/bin:$PATH"  # PMG shims
-
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/Users/rocky/dev/c/clipboard/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/rocky/dev/c/clipboard/google-cloud-sdk/path.zsh.inc'; fi
-
-# The next line enables shell command completion for gcloud.
-if [ -f '/Users/rocky/dev/c/clipboard/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/rocky/dev/c/clipboard/google-cloud-sdk/completion.zsh.inc'; fi
+# Machine-local config (untracked): work exports/aliases, machine paths.
+# See README "Migrating from an old machine".
+[ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"

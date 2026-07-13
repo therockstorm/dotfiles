@@ -85,9 +85,11 @@ idiomatic_version_file_enable_tools = ["node"]
 #     internal paths and commands on every commit. Re-set the three real
 #     preferences on a new machine: model, model_reasoning_effort,
 #     personality.
-#   work context: ~/.claude/hooks/ and ~/.config/groundcrew/ reference
-#     internal Clipboard repos — recreate by hand on work machines. Note
-#     settings.json's hooks section points at ~/.claude/hooks scripts.
+#   work context: ~/.config/groundcrew/ and friends reference internal work
+#     repos — copy by hand on work machines (see README "Migrating from an
+#     old machine"). ~/.claude/hooks/rtk-rewrite.sh, the only hook
+#     settings.json references, is created by `rtk init -g` in
+#     [tasks.bootstrap].
 "~/.claude/CLAUDE.md" = { source = "~/dev/dotfiles/.claude/CLAUDE.md" }
 "~/.claude/settings.json" = { source = "~/dev/dotfiles/.claude/settings.json" }
 "~/.claude/statusline.sh" = { source = "~/dev/dotfiles/.claude/statusline.sh" }
@@ -97,6 +99,12 @@ idiomatic_version_file_enable_tools = ["node"]
 "~/.config/helix/config.toml" = { source = "~/dev/dotfiles/.config/helix/config.toml" }
 "~/.config/helix/languages.toml" = { source = "~/dev/dotfiles/.config/helix/languages.toml" }
 "~/.config/gh/config.yml" = { source = "~/dev/dotfiles/.config/gh/config.yml" }
+# 1Password secret-injection scopes for the `ops` helper (source/aliases.zsh):
+# pointer files only, secrets never touch disk or the shell env. Work-vault
+# scopes are NOT tracked (UUID refs, public repo) — recreate locally as
+# ~/.config/op/{linear,src,status-update}.env. npm.env is written by the
+# employer bootstrap; don't create it by hand.
+"~/.config/op/ai.env" = { source = "~/dev/dotfiles/.config/op/ai.env" }
 
 [bootstrap.macos.dock]
 autohide = true
@@ -130,13 +138,18 @@ run_at_load = true
 
 # mise runs this task as the final step of `mise bootstrap`. Claude Code and
 # Codex use their native installers (not brew) so updates land ASAP. Guarded
-# where possible; rtk init is idempotent. Coexists with Clipboard's
-# configure-claude/configure-security-tools on work machines.
+# where possible; rtk init is idempotent. Coexists with employer bootstraps
+# on work machines.
 [tasks.bootstrap]
 description = "Install Claude Code + Codex (native installers) and init rtk"
-run = [
-  'command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash',
-  'command -v codex >/dev/null 2>&1 || curl -fsSL https://chatgpt.com/codex/install.sh | sh',
-  'rtk init -g --hook-only',
-  'rtk init -g --codex',
-]
+run = """
+set -euo pipefail
+# First run happens before any login shell: claude/codex land in
+# ~/.local/bin and rtk (mise's brew backend) in /opt/homebrew/bin, neither
+# of which is on the invoking shell's PATH yet.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
+command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
+command -v codex >/dev/null 2>&1 || curl -fsSL https://chatgpt.com/codex/install.sh | sh
+rtk init -g --hook-only
+rtk init -g --codex
+"""

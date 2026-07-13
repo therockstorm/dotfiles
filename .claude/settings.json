@@ -9,7 +9,6 @@
   },
   "permissions": {
     "allow": [
-      "Bash(bash /Users/rocky/.claude/plugins/marketplaces/clipboard/plugins/core/skills/unresolved-pr-comments/scripts/unresolvedPrComments.sh *)",
       "Bash(docker compose down)",
       "Bash(docker compose ls)",
       "Bash(docker compose up)",
@@ -192,15 +191,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/rocky/.claude/hooks/block-bash-commands.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
             "command": "/Users/rocky/.claude/hooks/rtk-rewrite.sh"
           }
         ]
@@ -212,7 +202,7 @@
   "disableArtifact": true,
   "statusLine": {
     "type": "command",
-    "command": "GIT_OPTIONAL_LOCKS=0 /Users/rocky/.claude/statusline.sh"
+    "command": "GIT_OPTIONAL_LOCKS=0 ~/.claude/statusline.sh"
   },
   "enabledPlugins": {
     "core@clipboard": true,
