@@ -128,6 +128,9 @@ show_recents = false
 preferred_view_style = "list"
 show_all_files = true
 
+[bootstrap.macos.keyboard]
+fn_state = false
+
 [bootstrap.macos.defaults.NSGlobalDomain]
 _HIHideMenuBar = true
 "com.apple.mouse.scaling" = 3.0
