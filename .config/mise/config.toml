@@ -1,64 +1,8 @@
 [tools]
 node = "lts"
-# Not brew: mise's brew backend only installs tap formulas whose tap
-# publishes api/formula/<name>.json, which eugene1g/safehouse doesn't.
-# The github backend pulls the release asset directly; bin renames the
-# bare script to `safehouse`, the command the brew formula installed.
-# (ubi can't rename bare single-file assets — it keeps safehouse.sh.)
-# Pinned to match the employer bootstrap's configure-security-tools,
-# which rewrites any other declared version to its pin; keeping parity
-# means it skips instead of dirtying this file. Bump both together.
-"github:eugene1g/agent-safehouse" = { version = "0.11.0", asset_pattern = "safehouse.sh", bin = "safehouse" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
-
-[bootstrap.packages]
-"brew:agent-browser" = "latest"
-"brew:awscli" = "latest"
-"brew:colima" = "latest"
-"brew:coreutils" = "latest"
-"brew:docker" = "latest"
-"brew:docker-compose" = "latest"
-"brew:eza" = "latest"
-"brew:fzf" = "latest"
-"brew:gh" = "latest"
-"brew:git" = "latest"
-"brew:git-delta" = "latest"
-"brew:gnupg" = "latest"
-"brew:helix" = "latest"
-"brew:jq" = "latest"
-"brew:mole" = "latest"
-"brew:pinentry-mac" = "latest"
-"brew:ripgrep" = "latest"
-"brew:rtk" = "latest"
-"brew:shellcheck" = "latest"
-"brew:sqlite" = "latest"
-"brew:starship" = "latest"
-"brew:typescript-language-server" = "latest"
-"brew:watchman" = "latest"
-"brew:zoxide" = "latest"
-# Not manageable by mise's brew backend — install manually (or via real
-# Homebrew if you install it):
-#   backblaze       cask uses an `installer` artifact mise rejects
-#   cotypist        not in the App Store or Homebrew (direct download)
-#   little-snitch   cask exists but needs system-extension approval anyway
-#   raycast         extension-less download URL: mise saves the dmg as
-#                   `download`, detects only zip by magic bytes, and fails
-#                   with "app artifact 'Raycast.app' was not found"
-#   amphetamine     App Store; mas installs bind to whichever Apple ID the
-#   nextdns         machine is signed into, which is wrong on company-owned
-#                   machines — install from the App Store by hand
-"brew-cask:cmux" = "latest"
-"brew-cask:codexbar" = "latest"
-"brew-cask:ddpm" = "latest"
-"brew-cask:font-fira-code-nerd-font" = "latest"
-"brew-cask:google-chrome" = "latest"
-"brew-cask:obsidian" = "latest"
-"brew-cask:signal" = "latest"
-"brew-cask:slack" = "latest"
-"brew-cask:superwhisper" = "latest"
-"brew-cask:zed" = "latest"
 
 [bootstrap.repos]
 "~/dev/dotfiles" = { url = "https://github.com/therockstorm/dotfiles.git" }
@@ -148,18 +92,19 @@ show-process-indicators = false
 # static-only converges to the same minimal Dock declaratively.)
 static-only = true
 
-# mise runs this task as the final step of `mise bootstrap`. Claude Code and
-# Codex use their native installers (not brew) so updates land ASAP. Guarded
-# where possible; rtk init is idempotent. Coexists with employer bootstraps
-# on work machines.
+# mise runs this task as the final step of `mise bootstrap`. Homebrew owns
+# system packages; Claude Code and Codex use their native installers so updates
+# land ASAP. Guarded where possible; rtk init is idempotent. Coexists with
+# employer bootstraps on work machines.
 [tasks.bootstrap]
-description = "Install Claude Code + Codex, init rtk, load caps-to-escape"
+description = "Install Homebrew packages, agent CLIs, and caps-to-escape"
 run = """
 set -euo pipefail
 # First run happens before any login shell: claude/codex land in
-# ~/.local/bin and rtk (mise's brew backend) in /opt/homebrew/bin, neither
-# of which is on the invoking shell's PATH yet.
+# ~/.local/bin and Homebrew tools in /opt/homebrew/bin, neither of which is on
+# the invoking shell's PATH yet.
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
+brew bundle --file "$HOME/dev/dotfiles/Brewfile"
 command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
 # CODEX_NON_INTERACTIVE: the installer's "Start Codex now?" prompt reads
 # /dev/tty and hangs the bootstrap otherwise.
