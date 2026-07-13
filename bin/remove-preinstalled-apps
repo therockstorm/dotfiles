@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Remove the preinstalled Apple apps that macOS allows removing (the iLife /
+# iWork suite in /Applications). Apps under /System/Applications (News,
+# Stocks, TV, …) are SIP-protected and cannot be removed — hide them from the
+# Dock and Spotlight instead. Opt-in; prompts before deleting.
+set -euo pipefail
+
+REMOVABLE=(
+  "/Applications/GarageBand.app"
+  "/Applications/iMovie.app"
+  "/Applications/Keynote.app"
+  "/Applications/Numbers.app"
+  "/Applications/Pages.app"
+)
+EXTRAS=(
+  "$HOME/Library/Application Support/GarageBand"
+  "/Library/Application Support/GarageBand"
+  "/Library/Audio/Apple Loops"
+)
+
+targets=()
+remove_garageband_extras=false
+for app in "${REMOVABLE[@]}"; do
+  if [[ -d "$app" ]]; then
+    targets+=("$app")
+    [[ "$app" == "/Applications/GarageBand.app" ]] && remove_garageband_extras=true
+  fi
+done
+
+if $remove_garageband_extras; then
+  for extra in "${EXTRAS[@]}"; do
+    [[ -d "$extra" ]] && targets+=("$extra")
+  done
+fi
+
+if [[ ${#targets[@]} -eq 0 ]]; then
+  echo "Nothing to remove — none of the removable preinstalled apps are present."
+  exit 0
+fi
+
+echo "Will remove:"
+printf '  %s\n' "${targets[@]}"
+read -rp "Proceed? [y/N] " answer
+[[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
+
+for target in "${targets[@]}"; do
+  sudo rm -rf "$target"
+  echo "  ✓ removed $target"
+done
+echo "Done."

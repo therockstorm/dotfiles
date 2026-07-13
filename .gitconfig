@@ -50,9 +50,13 @@
   smudge = git-lfs smudge -- %f
 [gpg "ssh"]
   program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-[includeIf "gitdir:~/dev/c/"]
-  path = ~/.gitconfig-clipboard
-[coderabbit]
-  machineId = cli/8a65971be4d34d20a0f6549a2aaf1679
+# Work identity by remote, not directory — matches exactly what the employer
+# bootstrap's configure-git would write (absolute path included), so it skips
+# instead of dirtying this file through the ~/.gitconfig symlink. The include
+# is silently ignored where ~/.gitconfig-clipboard doesn't exist.
+[includeIf "hasconfig:remote.*.url:https://github.com/ClipboardHealth/**"]
+  path = /Users/rocky/.gitconfig-clipboard
+[includeIf "hasconfig:remote.*.url:git@github.com:ClipboardHealth/**"]
+  path = /Users/rocky/.gitconfig-clipboard
 [url "https://github.com/"]
   insteadOf = git@github.com:
