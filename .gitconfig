@@ -1,7 +1,5 @@
 [code]
   editor = zed --wait
-#[commit]
-#  gpgsign = true
 [core]
   autocrlf = input
   pager = delta
@@ -48,8 +46,6 @@
   required = true
   clean = git-lfs clean -- %f
   smudge = git-lfs smudge -- %f
-#[gpg "ssh"]
-#  program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [includeIf "hasconfig:remote.*.url:https://github.com/ClipboardHealth/**"]
   path = /Users/rocky/.gitconfig-clipboard
 [includeIf "hasconfig:remote.*.url:git@github.com:ClipboardHealth/**"]
