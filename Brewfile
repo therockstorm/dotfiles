@@ -30,6 +30,7 @@ brew "zoxide"
 
 cask "backblaze"
 cask "chatgpt"
+cask "cleanshot"
 cask "cmux"
 cask "codexbar"
 cask "cotypist"

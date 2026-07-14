@@ -1,4 +1,5 @@
 [tools]
+"npm:@tobilu/qmd" = "latest"
 node = "lts"
 
 [settings]
@@ -72,9 +73,22 @@ fn_state = false
 _HIHideMenuBar = true
 "com.apple.mouse.scaling" = 3.0
 "com.apple.trackpad.scaling" = 3.0
+AppleICUForce24HourTime = true
 AppleShowAllExtensions = true
 AppleKeyboardUIMode = 2
 NSAutomaticPeriodSubstitutionEnabled = false
+
+[bootstrap.macos.defaults."com.apple.WindowManager"]
+StandardHideWidgets = true
+StageManagerHideWidgets = true
+
+[bootstrap.macos.defaults."com.cmuxterm.app"]
+workspacePresentationMode = "minimal"
+sidebarMatchTerminalBackground = true
+
+[bootstrap.macos.defaults."com.raycast.macos"]
+raycastGlobalHotkey = "Command-49"
+raycastPreferredWindowMode = "compact"
 
 [bootstrap.macos.defaults."com.apple.finder"]
 NewWindowTarget = "PfHm"
