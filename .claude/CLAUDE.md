@@ -46,3 +46,4 @@ Canonical triage roles map to Linear workflow states plus the existing `agent-*`
 ### Domain docs
 
 Single-context by default (`CONTEXT.md` + `docs/adr/` at repo root); a root `CONTEXT-MAP.md` marks a repo as multi-context. See `~/.claude/docs/agents/domain.md`.
+
