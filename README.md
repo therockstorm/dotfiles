@@ -30,11 +30,13 @@ mise-managed drift. If a real file already exists at a symlink target, add
 
 Manual steps not yet automated:
 
-- Install sbx, Little Snitch, and the App Store apps Amphetamine and NextDNS.
-  Little Snitch remains manual because its system extension needs approval.
+- Install the App Store apps Amphetamine and NextDNS.
 - Optionally run `bin/remove-preinstalled-apps` once to delete the iLife/iWork
   suite (prompts before deleting; SIP-protected apps can only be hidden).
+- System Settings > Displays > select More Space.
 - System Settings > Displays > Night Shift > Schedule.
+- System Settings > Keyboard > Keyboard Shortcuts > Spotlight > turn off
+  Spotlight shortcuts.
 
 ## Agent notes
 
@@ -45,15 +47,6 @@ VPN Client). Add `--force-dotfiles` when targets exist as real files. Verify
 with `mise bootstrap status` (no missing entries),
 `brew bundle check --no-upgrade --file ~/dev/dotfiles/Brewfile` and
 `zsh -ic 'starship --version'`.
-
-## Work machines
-
-Employer setup layers its own Brewfile and mise config into the same run.
-Homebrew deduplicates packages shared by both Brewfiles; the mise layers remain
-disjoint. `.zshrc` supports the layering with two optional sources: the
-employer shell config (only its path is hardcoded; inert on personal machines)
-and `~/.zshrc.local` for untracked machine-specific config (work
-exports/aliases, machine paths).
 
 ## Migrating from an old machine
 
