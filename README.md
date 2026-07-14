@@ -57,15 +57,8 @@ exports/aliases, machine paths).
 
 ## Migrating from an old machine
 
-These files are deliberately untracked — work-internal references and
-1Password pointer files don't belong in a public repo. Copy them across
-once; everything else converges from this repo:
+These files are deliberately untracked. Copy them once:
 
-- `~/.zshrc.local` — work exports and aliases (update any repo paths if the
-  new machine's layout differs)
-- `~/.config/op/*.env` — work 1Password scopes (skip `npm.env`; the employer
-  bootstrap writes it)
-- `~/.config/groundcrew/`
-- `~/.config/clearance/personal-allow-hosts`
-- Codex: re-set `model`, `model_reasoning_effort`, and `personality` in
-  `~/.codex/config.toml`; the rest of that file is machine-appended state
+- `~/.zshrc.local`: work exports and aliases (update repo path)
+- `~/.config/op/*.env`: work 1Password scopes
+- `~/.config/groundcrew/`: config and allow-hosts files

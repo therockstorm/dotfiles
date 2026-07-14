@@ -174,15 +174,6 @@
             "command": "afplay -v 0.35 /System/Library/Sounds/Submarine.aiff"
           }
         ]
-      },
-      {
-        "matcher": "feedback_survey",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "exit 2"
-          }
-        ]
       }
     ],
     "PreToolUse": [
@@ -191,7 +182,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/rocky/.claude/hooks/rtk-rewrite.sh"
+            "command": "rtk hook claude"
           }
         ]
       }

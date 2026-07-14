@@ -51,11 +51,11 @@ idiomatic_version_file_enable_tools = ["node"]
 # 1Password secret-injection scopes for the `ops` helper (source/aliases.zsh):
 # pointer files only, secrets never touch disk or the shell env. Work-vault
 # scopes are NOT tracked (UUID refs, public repo) — recreate locally as
-# ~/.config/op/{linear,src,status-update}.env. npm.env is written by the
-# employer bootstrap; don't create it by hand.
-"~/.config/op/ai.env" = { source = "~/dev/dotfiles/.config/op/ai.env" }
-# Caps Lock → Escape at login (hidutil mappings don't survive reboot).
-# Deliberately NOT [bootstrap.macos.launchd.agents]: mise's apply always
+"~/.config/op/crew.env" = { source = "~/dev/dotfiles/.config/op/crew.env" }
+"~/.config/op/linear.env" = { source = "~/dev/dotfiles/.config/op/linear.env" }
+"~/.config/op/src.env" = { source = "~/dev/dotfiles/.config/op/src.env" }
+"~/.config/op/status-update.env" = { source = "~/dev/dotfiles/.config/op/status-update.env" }
+
 # runs `launchctl bootout <domain> <path>` first, and on current macOS that
 # returns EIO (not "no such process") for a never-loaded service, failing
 # the first apply on every fresh machine. mise copies the plist; the guarded
