@@ -30,7 +30,7 @@ mise-managed drift. If a real file already exists at a symlink target, add
 
 Manual steps not yet automated:
 
-- Install the App Store apps Amphetamine and NextDNS.
+- Install the App Store app Amphetamine.
 - Optionally run `bin/remove-preinstalled-apps` once to delete the iLife/iWork
   suite (prompts before deleting; SIP-protected apps can only be hidden).
 - System Settings > Displays > select More Space.
