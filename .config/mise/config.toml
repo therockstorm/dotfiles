@@ -1,5 +1,6 @@
 [tools]
 "npm:@clipboard-health/groundcrew" = "latest"
+"npm:npm-check-updates" = "latest"
 "npm:@tobilu/qmd" = "latest"
 node = "lts"
 
