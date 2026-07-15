@@ -8,7 +8,7 @@ alias tree="eza -T --hyperlink --icons=auto"  # tree view
 # Inject a scope of 1Password secrets into ONE subprocess — nothing is ever
 # exported into the shell. Scopes are pointer files (op:// refs, no secret
 # values) in ~/.config/op/<scope>.env. Usage: ops ai node script.mjs
-ops() { op run --env-file="$HOME/.config/op/$1.env" -- "${@:2}"; }
+ops() { op run --no-masking --env-file="$HOME/.config/op/$1.env" -- "${@:2}"; }
 
 # Update agent CLIs and every installed plugin marketplace. Sequential
 # rather than &&-chained so one failure doesn't block the rest.
