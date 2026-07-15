@@ -87,6 +87,9 @@ StageManagerHideWidgets = true
 [bootstrap.macos.defaults."com.cmuxterm.app"]
 workspacePresentationMode = "minimal"
 sidebarMatchTerminalBackground = true
+sidebarShowNotificationMessage = false
+workspaceAutoReorderOnNotification = false
+showMenuBarExtra = false
 
 [bootstrap.macos.defaults."com.raycast.macos"]
 raycastGlobalHotkey = "Command-49"

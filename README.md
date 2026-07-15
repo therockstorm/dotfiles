@@ -35,8 +35,10 @@ Manual steps not yet automated:
   suite (prompts before deleting; SIP-protected apps can only be hidden).
 - System Settings > Displays > select More Space.
 - System Settings > Displays > Night Shift > Schedule.
-- System Settings > Keyboard > Keyboard Shortcuts > Spotlight > turn off
-  Spotlight shortcuts.
+- System Settings > Keyboard > Keyboard Shortcuts > Spotlight > off.
+- System Settings > Keyboard > Keyboard Shortcuts > Screenshots > off.
+- Slack > Settings > Notifications > Sound & appearance > Show a badge on
+  Slack's icon to indicate new activity: off.
 
 ## Agent notes
 
