@@ -7,6 +7,7 @@ node = "lts"
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
+minimum_release_age_excludes = ["npm:@clipboard-health/groundcrew"]
 
 [bootstrap.repos]
 "~/dev/dotfiles" = { url = "https://github.com/therockstorm/dotfiles.git" }
