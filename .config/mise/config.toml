@@ -70,7 +70,7 @@ preferred_view_style = "list"
 show_all_files = true
 
 [bootstrap.macos.keyboard]
-fn_state = false
+fn_state = true
 
 [bootstrap.macos.defaults.NSGlobalDomain]
 _HIHideMenuBar = true

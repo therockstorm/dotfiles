@@ -5,6 +5,7 @@ brew "agent-browser"
 # definition; normal bottle and download verification still applies.
 brew "eugene1g/safehouse/agent-safehouse", trusted: true
 brew "awscli"
+brew "cliproxyapi", restart_service: true
 brew "colima"
 brew "coreutils"
 brew "docker"
@@ -25,6 +26,7 @@ brew "rtk"
 brew "shellcheck"
 brew "sqlite"
 brew "starship"
+brew "tmux"
 brew "typescript-language-server"
 brew "watchman"
 brew "zoxide"
