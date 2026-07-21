@@ -1,6 +1,7 @@
 [tools]
 "npm:@clipboard-health/groundcrew" = "latest"
 "npm:npm-check-updates" = "latest"
+"npm:oxfmt" = "latest"
 "npm:skills" = "latest"
 "npm:@tobilu/qmd" = "latest"
 node = "lts"
