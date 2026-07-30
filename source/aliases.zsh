@@ -13,22 +13,49 @@ ops() { op run --no-masking --env-file="$HOME/.config/op/$1.env" -- "${@:2}"; }
 # Update agent CLIs and every installed plugin marketplace. Sequential
 # rather than &&-chained so one failure doesn't block the rest.
 agentup() {
-  claude update
+  local -a failures=()
+
+  claude update || failures+=("claude update")
   local m
   for m in "$HOME/.claude/plugins/marketplaces"/*(N/:t); do
-    claude plugin marketplace update "$m"
+    claude plugin marketplace update "$m" ||
+      failures+=("claude plugin marketplace update $m")
   done
-  codex update
+  codex update || failures+=("codex update")
+
+  if (( ${#failures[@]} )); then
+    print -u2 -- "agentup completed with failures:"
+    local failure
+    for failure in "${failures[@]}"; do
+      print -u2 -- "  - $failure"
+    done
+    return 1
+  fi
 }
 
 # Homebrew system packages/casks, mise itself, and mise-managed runtimes.
 miseup() {
-  brew update && brew upgrade && brew cleanup
+  local -a failures=()
+
+  brew update || failures+=("brew update")
+  brew upgrade || failures+=("brew upgrade")
+  brew cleanup || failures+=("brew cleanup")
   # Older machines installed mise with Homebrew; stage-one installs update
   # themselves. Avoid asking a package-manager install to self-update.
-  brew list mise >/dev/null 2>&1 || mise self-update -y
-  mise upgrade
-  agentup
+  if ! brew list mise >/dev/null 2>&1; then
+    mise self-update -y || failures+=("mise self-update")
+  fi
+  mise upgrade || failures+=("mise upgrade")
+  agentup || failures+=("agentup")
+
+  if (( ${#failures[@]} )); then
+    print -u2 -- "miseup completed with failures:"
+    local failure
+    for failure in "${failures[@]}"; do
+      print -u2 -- "  - $failure"
+    done
+    return 1
+  fi
 }
 
 # git
