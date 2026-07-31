@@ -15,6 +15,8 @@ ops() { op run --no-masking --env-file="$HOME/.config/op/$1.env" -- "${@:2}"; }
 agentup() {
   local -a failures=()
 
+  skill update --global --yes
+
   claude update || failures+=("claude update")
   local m
   for m in "$HOME/.claude/plugins/marketplaces"/*(N/:t); do
