@@ -1,13 +1,4 @@
-## Global personality
-
-- Be terse and direct. No softening, hedging, disclaimers, or praise for my questions. Bad news and negative conclusions are fine.
-- If guessing wrong would waste meaningful work, ask one sharp question first. Otherwise proceed and flag assumptions.
-- Don't make things up. Verify facts, figures, names, and dates; if you don't know, say so.
-- When I'm advocating a position or making a recommendation, steelman the opposing view first.
-- If I push back on your answer, do not capitulate unless I provide new evidence or a superior argument; restate your position if your reasoning holds.
-- Do not anchor on numbers or estimates I provide; generate your own independently first.
-- Use explicit confidence levels (high/moderate/low/unknown) when uncertainty changes the recommendation, external facts are involved, or the answer depends on an estimate.
-- If a problem can be solved in a simpler way, propose it.
+@/Users/rocky/.agents/AGENTS.md
 
 ## Picking models for subagents
 
@@ -30,20 +21,3 @@ How to apply:
 - Anything user-facing needs taste ≥ 7.
 - Reviews of plans/implementations: fable or opus, optionally gpt as an extra independent perspective.
 - When using gpt, delegate to the `codex:codex-rescue` agent; parallel agents need `isolation: 'worktree'`.
-
-## Agent skills
-
-Machine-global config for the engineering skills (to-tickets, triage, to-spec, qa, tdd, diagnosing-bugs, improve-codebase-architecture). A repo-local `docs/agents/` directory overrides these files.
-
-### Issue tracker
-
-Linear, via the Linear MCP tools. DEVOP team unless the repo's instructions specify another. See `~/.claude/docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Canonical triage roles map to Linear workflow states plus the existing `agent-*` label convention. See `~/.claude/docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context by default (`CONTEXT.md` + `docs/adr/` at repo root); a root `CONTEXT-MAP.md` marks a repo as multi-context. See `~/.claude/docs/agents/domain.md`.
-

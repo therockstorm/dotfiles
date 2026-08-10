@@ -1,5 +1,5 @@
 [tools]
-"npm:@clipboard-health/groundcrew" = "latest"
+"npm:clawpatch" = "latest"
 "npm:npm-check-updates" = "latest"
 "npm:oxfmt" = "latest"
 "npm:skills" = "latest"
@@ -8,7 +8,6 @@ node = "lts"
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
-minimum_release_age_excludes = ["npm:@clipboard-health/groundcrew"]
 
 [bootstrap.repos]
 "~/dev/dotfiles" = { url = "https://github.com/therockstorm/dotfiles.git" }
