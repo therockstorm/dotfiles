@@ -160,11 +160,12 @@ ghurl() {
   gh browse "$1" --no-browser | pbcopy
 }
 
-# tidy: remove all non-primary git worktrees and all non-current local branches.
+# tidy: remove non-primary, non-Groundcrew git worktrees and disposable branches.
 #
-# Lists worktrees, prompts for confirmation, force-removes them. Then lists
-# local branches, prompts for confirmation, force-deletes them. Must be run
-# from the primary worktree with a checked-out branch (not detached HEAD).
+# Lists worktrees outside .groundcrew/worktrees, prompts for confirmation,
+# and force-removes them. Then lists local branches outside crew/, prompts for
+# confirmation, and force-deletes them. Must be run from the primary worktree
+# with a checked-out branch (not detached HEAD).
 tidy() {
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "tidy: not inside a git work tree" >&2
@@ -187,7 +188,7 @@ tidy() {
 
   local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
 
-  local worktrees=$(git worktree list --porcelain | sed -n 's/^worktree //p' | grep -Fxv -- "$primary")
+  local worktrees=$(git worktree list --porcelain | sed -n 's/^worktree //p' | grep -Fxv -- "$primary" | grep -Fv -- '.groundcrew/worktrees')
   if [ -n "$worktrees" ]; then
     echo "Worktrees to remove:"
     echo "$worktrees\n"
@@ -202,7 +203,7 @@ tidy() {
     echo "No worktrees to remove.\n"
   fi
 
-  local branches=$(git branch --format='%(refname:short)' | grep -v "^${current_branch}\$" | { [ -n "$default_branch" ] && grep -v "^${default_branch}\$" || cat; })
+  local branches=$(git branch --format='%(refname:short)' | grep -v '^crew/' | grep -v "^${current_branch}\$" | { [ -n "$default_branch" ] && grep -v "^${default_branch}\$" || cat; })
   if [ -n "$branches" ]; then
     echo "Branches to delete:"
     echo "$branches\n"
