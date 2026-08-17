@@ -33,6 +33,7 @@ brew "zoxide"
 
 cask "backblaze"
 cask "chatgpt"
+cask "claude", trusted: true
 cask "cleanshot"
 cask "cmux"
 cask "codexbar"

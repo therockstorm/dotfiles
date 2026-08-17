@@ -40,6 +40,8 @@ miseup() {
   local -a failures=()
 
   brew update || failures+=("brew update")
+  brew bundle --no-upgrade --file "$HOME/dev/dotfiles/Brewfile" ||
+    failures+=("brew bundle")
   brew upgrade || failures+=("brew upgrade")
   brew cleanup || failures+=("brew cleanup")
   # Older machines installed mise with Homebrew; stage-one installs update
