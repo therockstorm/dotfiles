@@ -22,6 +22,7 @@ idiomatic_version_file_enable_tools = ["node"]
 "~/.gnupg/gpg-agent.conf" = { source = "~/dev/dotfiles/.gnupg/gpg-agent.conf" }
 "~/.ssh/config" = { source = "~/dev/dotfiles/.ssh/config" }
 "~/.gitconfig" = { source = "~/dev/dotfiles/.gitconfig" }
+"~/.zprofile" = { source = "~/dev/dotfiles/.zprofile" }
 "~/.zshrc" = { source = "~/dev/dotfiles/.zshrc" }
 "~/source" = { source = "~/dev/dotfiles/source" }
 # Agent/editor config. Tools that rewrite files atomically (Claude Code and
