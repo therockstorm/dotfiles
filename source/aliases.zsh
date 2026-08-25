@@ -220,3 +220,8 @@ tidy() {
     echo "No branches to delete.\n"
   fi
 }
+
+# Safer cleanup: dry-run by default, with exact merge and worktree checks.
+tidy-safe() {
+  "$HOME/dev/dotfiles/bin/tidy-safe" "$@"
+}

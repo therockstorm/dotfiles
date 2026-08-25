@@ -1,0 +1,523 @@
+#!/usr/bin/env zsh
+emulate -L zsh
+setopt errexit nounset pipefail
+
+apply=false
+assume_yes=false
+recursive=false
+recursive_root=
+typeset -a excludes repositories
+typeset -a safe_worktree_repos safe_worktree_paths safe_worktree_reasons
+typeset -a safe_worktree_shas safe_worktree_branch_refs
+typeset -a safe_branch_repos safe_branch_names safe_branch_shas safe_branch_modes safe_branch_reasons
+typeset -A merged_proof_cache
+repositories_scanned=0
+repositories_excluded=0
+kept_items=0
+failed_deletions=0
+
+usage() {
+  cat <<'EOF'
+Usage: tidy-safe [--apply] [--yes] [--recursive [ROOT]] [--exclude NAME_OR_PATH]
+
+Audit a repository and delete only worktrees and branches whose exact commits
+are proven safe. The default is a dry run in the current repository.
+
+Options:
+  --apply                 Delete the items marked SAFE.
+  --yes                   Do not prompt when used with --apply.
+  --recursive [ROOT]      Discover and deduplicate repositories below ROOT.
+                          ROOT defaults to the current directory.
+  --exclude NAME_OR_PATH  Skip a repository by primary directory name or path.
+                          Repeat this option to add exclusions.
+  -h, --help              Show this help.
+
+Examples:
+  tidy-safe
+  tidy-safe --apply
+  tidy-safe --recursive ~/dev --exclude clipboard-health
+  tidy-safe --recursive ~/dev --exclude clipboard-health --apply --yes
+EOF
+}
+
+die() {
+  print -u2 -- "tidy-safe: $1"
+  exit 2
+}
+
+while (( $# > 0 )); do
+  case "$1" in
+    --apply)
+      apply=true
+      ;;
+    --yes)
+      assume_yes=true
+      ;;
+    --recursive)
+      recursive=true
+      if (( $# > 1 )) && [[ "$2" != -* ]]; then
+        recursive_root=$2
+        shift
+      fi
+      ;;
+    --exclude)
+      (( $# > 1 )) || die '--exclude requires a repository name or path'
+      excludes+=("$2")
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+  shift
+done
+
+if [[ "$assume_yes" == true && "$apply" != true ]]; then
+  die '--yes requires --apply'
+fi
+
+absolute_directory() {
+  local directory=$1
+  (cd "$directory" 2>/dev/null && pwd -P)
+}
+
+primary_worktree() {
+  git -C "$1" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -n 1
+}
+
+is_excluded() {
+  local repository=$1 exclusion absolute_exclusion
+  for exclusion in "${excludes[@]}"; do
+    if [[ "$exclusion" == "$repository" || "$exclusion" == "${repository:t}" ]]; then
+      return 0
+    fi
+    absolute_exclusion=$(absolute_directory "$exclusion" 2>/dev/null || true)
+    if [[ -n "$absolute_exclusion" && "$absolute_exclusion" == "$repository" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+discover_repositories() {
+  local root marker candidate common primary
+  typeset -A seen_common
+
+  if [[ "$recursive" == true ]]; then
+    root=$(absolute_directory "${recursive_root:-$PWD}") || die "recursive root does not exist: ${recursive_root:-$PWD}"
+    while IFS= read -r marker; do
+      candidate=${marker:h}
+      common=$(git -C "$candidate" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
+      primary=$(primary_worktree "$candidate" || true)
+      [[ -n "$common" && -n "$primary" ]] || continue
+      primary=$(absolute_directory "$primary" 2>/dev/null || true)
+      [[ -n "$primary" ]] || continue
+      [[ "$primary" == "$root" || "$primary" == "$root"/* ]] || continue
+      (( ${+seen_common[$common]} )) && continue
+      seen_common[$common]=1
+      repositories+=("$primary")
+    done < <(
+      find "$root" \
+        -type d -name node_modules -prune -o \
+        -type d -name .git -print -prune -o \
+        -type f -name .git -print
+    )
+    repositories=("${(@on)repositories}")
+    return
+  fi
+
+  candidate=$(git rev-parse --show-toplevel 2>/dev/null) || die 'not inside a Git worktree'
+  primary=$(primary_worktree "$candidate") || die 'cannot determine the primary worktree'
+  candidate=$(absolute_directory "$candidate") || die 'cannot resolve the current worktree'
+  primary=$(absolute_directory "$primary") || die 'cannot resolve the primary worktree'
+  [[ "$candidate" == "$primary" ]] || die "run from the primary worktree: $primary"
+  repositories+=("$primary")
+}
+
+live_default_remote_ref() {
+  local repository=$1 head_ref branch remote_ref
+  head_ref=$(
+    git -C "$repository" ls-remote --symref origin HEAD 2>/dev/null |
+      sed -n 's/^ref: \(refs\/heads\/[^[:space:]]*\)[[:space:]]*HEAD$/\1/p' |
+      head -n 1
+  )
+  [[ -n "$head_ref" ]] || return 1
+  branch=${head_ref#refs/heads/}
+  remote_ref="refs/remotes/origin/$branch"
+  git -C "$repository" show-ref --verify --quiet "$remote_ref" || return 1
+  print -- "$remote_ref"
+}
+
+exact_merged_pr_head() {
+  local repository=$1 default_branch=$2 branch=$3 sha=$4 key output
+  key="$repository|$default_branch|$branch|$sha"
+  if (( ${+merged_proof_cache[$key]} )); then
+    [[ "${merged_proof_cache[$key]}" == yes ]]
+    return
+  fi
+
+  merged_proof_cache[$key]=no
+  command -v gh >/dev/null 2>&1 || return 1
+  output=$(
+    cd "$repository" &&
+      gh pr list \
+        --state all \
+        --base "$default_branch" \
+        --head "$branch" \
+        --limit 100 \
+        --json headRefOid,mergedAt \
+        --jq '.[] | select(.mergedAt != null) | .headRefOid' 2>/dev/null
+  ) || return 1
+
+  if print -r -- "$output" | grep -qxF -- "$sha"; then
+    merged_proof_cache[$key]=yes
+    return 0
+  fi
+  return 1
+}
+
+safe_commit_reason() {
+  local repository=$1 default_ref=$2 branch=$3 sha=$4 default_branch
+  default_branch=${default_ref#refs/remotes/origin/}
+  if git -C "$repository" merge-base --is-ancestor "$sha" "$default_ref"; then
+    print -- "merged into ${default_ref#refs/remotes/}"
+    return 0
+  fi
+  if [[ -n "$branch" ]] && exact_merged_pr_head "$repository" "$default_branch" "$branch" "$sha"; then
+    print -- "exact head of a PR merged into $default_branch"
+    return 0
+  fi
+  return 1
+}
+
+in_progress_operation() {
+  local worktree=$1 marker git_path
+  for marker in MERGE_HEAD REBASE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START; do
+    git -C "$worktree" rev-parse --verify --quiet "$marker" >/dev/null && return 0
+  done
+  for marker in rebase-apply rebase-merge sequencer; do
+    git_path=$(git -C "$worktree" rev-parse --git-path "$marker" 2>/dev/null || true)
+    [[ -n "$git_path" && -e "$git_path" ]] && return 0
+  done
+  return 1
+}
+
+audit_worktree() {
+  local repository=$1 default_ref=$2 worktree_path=$3 branch_ref=$4 locked=$5 prunable=$6
+  local worktree_status sha branch reason
+  [[ "$worktree_path" != "$repository" ]] || return 0
+
+  if [[ "$locked" == true ]]; then
+    print -- "  KEEP worktree $worktree_path: locked"
+    (( kept_items += 1 ))
+    return 0
+  fi
+  if [[ "$prunable" == true || ! -d "$worktree_path" ]]; then
+    print -- "  KEEP worktree $worktree_path: registration is stale or path is missing"
+    (( kept_items += 1 ))
+    return 0
+  fi
+  if ! worktree_status=$(git -C "$worktree_path" status --porcelain=v1 --untracked-files=all 2>/dev/null); then
+    print -- "  KEEP worktree $worktree_path: status unavailable"
+    (( kept_items += 1 ))
+    return 0
+  fi
+  if [[ -n "$worktree_status" ]]; then
+    print -- "  KEEP worktree $worktree_path: dirty"
+    (( kept_items += 1 ))
+    return 0
+  fi
+  if in_progress_operation "$worktree_path"; then
+    print -- "  KEEP worktree $worktree_path: Git operation in progress"
+    (( kept_items += 1 ))
+    return 0
+  fi
+  sha=$(git -C "$worktree_path" rev-parse --verify HEAD 2>/dev/null) || {
+    print -- "  KEEP worktree $worktree_path: HEAD unavailable"
+    (( kept_items += 1 ))
+    return 0
+  }
+  branch=${branch_ref#refs/heads/}
+  [[ "$branch" != "$branch_ref" ]] || branch=
+  if ! reason=$(safe_commit_reason "$repository" "$default_ref" "$branch" "$sha"); then
+    print -- "  KEEP worktree $worktree_path: unmerged"
+    (( kept_items += 1 ))
+    return 0
+  fi
+
+  print -- "  SAFE worktree $worktree_path: $reason"
+  safe_worktree_repos+=("$repository")
+  safe_worktree_paths+=("$worktree_path")
+  safe_worktree_reasons+=("$reason")
+  safe_worktree_shas+=("$sha")
+  safe_worktree_branch_refs+=("$branch_ref")
+}
+
+audit_repository() {
+  local repository=$1 default_ref default_branch current_branch remote_url
+  local worktree_path= branch_ref= locked=false prunable=false line branch sha reason mode
+  typeset -A safe_paths checked_out_refs
+
+  if is_excluded "$repository"; then
+    print -- "EXCLUDED repository $repository"
+    (( repositories_excluded += 1 ))
+    return 0
+  fi
+
+  print -- "REPOSITORY $repository"
+  remote_url=$(git -C "$repository" remote get-url origin 2>/dev/null || true)
+  if [[ -z "$remote_url" ]]; then
+    print -- '  SKIP repository: origin remote is missing'
+    (( kept_items += 1 ))
+    return 0
+  fi
+  if ! git -C "$repository" fetch --prune origin >/dev/null 2>&1; then
+    print -- '  SKIP repository: fetch failed'
+    (( kept_items += 1 ))
+    return 0
+  fi
+  default_ref=$(live_default_remote_ref "$repository" || true)
+  if [[ -z "$default_ref" ]]; then
+    print -- '  SKIP repository: remote default branch is ambiguous or missing'
+    (( kept_items += 1 ))
+    return 0
+  fi
+  default_branch=${default_ref#refs/remotes/origin/}
+  current_branch=$(git -C "$repository" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+  if [[ "$current_branch" != "$default_branch" ]]; then
+    print -- "  SKIP repository: primary worktree is on ${current_branch:-detached HEAD}, not $default_branch"
+    (( kept_items += 1 ))
+    return 0
+  fi
+  (( repositories_scanned += 1 ))
+
+  evaluate_block() {
+    [[ -n "$worktree_path" ]] || return 0
+    audit_worktree "$repository" "$default_ref" "$worktree_path" "$branch_ref" "$locked" "$prunable"
+    worktree_path=
+    branch_ref=
+    locked=false
+    prunable=false
+  }
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -z "$line" ]]; then
+      evaluate_block
+      continue
+    fi
+    case "$line" in
+      'worktree '*) worktree_path=${line#worktree } ;;
+      'branch '*) branch_ref=${line#branch } ;;
+      locked*) locked=true ;;
+      prunable*) prunable=true ;;
+    esac
+  done < <(git -C "$repository" worktree list --porcelain; print)
+
+  local safe_path
+  for safe_path in "${safe_worktree_paths[@]}"; do
+    safe_paths[$safe_path]=1
+  done
+  worktree_path=
+  branch_ref=
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -z "$line" ]]; then
+      if [[ -n "$worktree_path" && -n "$branch_ref" ]] && (( ! ${+safe_paths[$worktree_path]} )); then
+        checked_out_refs[$branch_ref]=1
+      fi
+      worktree_path=
+      branch_ref=
+      continue
+    fi
+    case "$line" in
+      'worktree '*) worktree_path=${line#worktree } ;;
+      'branch '*) branch_ref=${line#branch } ;;
+    esac
+  done < <(git -C "$repository" worktree list --porcelain; print)
+
+  while IFS= read -r branch; do
+    [[ -n "$branch" && "$branch" != "$default_branch" ]] || continue
+    (( ${+checked_out_refs[refs/heads/$branch]} )) && continue
+    sha=$(git -C "$repository" rev-parse --verify "refs/heads/$branch")
+    if ! reason=$(safe_commit_reason "$repository" "$default_ref" "$branch" "$sha"); then
+      print -- "  KEEP branch $branch: unmerged"
+      (( kept_items += 1 ))
+      continue
+    fi
+    if git -C "$repository" merge-base --is-ancestor "$sha" "$default_ref"; then
+      mode=merged
+    else
+      mode=squash
+    fi
+    print -- "  SAFE branch $branch: $reason"
+    safe_branch_repos+=("$repository")
+    safe_branch_names+=("$branch")
+    safe_branch_shas+=("$sha")
+    safe_branch_modes+=("$mode")
+    safe_branch_reasons+=("$reason")
+  done < <(git -C "$repository" for-each-ref --format='%(refname:short)' refs/heads)
+}
+
+branch_is_checked_out() {
+  local repository=$1 branch=$2
+  git -C "$repository" worktree list --porcelain | grep -qxF -- "branch refs/heads/$branch"
+}
+
+worktree_registration_matches() {
+  local repository=$1 target_path=$2 expected_branch_ref=$3
+  local worktree_path= branch_ref= locked=false prunable=false line
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -z "$line" ]]; then
+      if [[ "$worktree_path" == "$target_path" ]]; then
+        [[ "$locked" == false && "$prunable" == false && "$branch_ref" == "$expected_branch_ref" ]]
+        return
+      fi
+      worktree_path=
+      branch_ref=
+      locked=false
+      prunable=false
+      continue
+    fi
+    case "$line" in
+      'worktree '*) worktree_path=${line#worktree } ;;
+      'branch '*) branch_ref=${line#branch } ;;
+      locked*) locked=true ;;
+      prunable*) prunable=true ;;
+    esac
+  done < <(git -C "$repository" worktree list --porcelain 2>/dev/null; print)
+  return 1
+}
+
+worktree_still_safe() {
+  local repository=$1 worktree_path=$2 expected_sha=$3 expected_branch_ref=$4
+  local worktree_status actual_sha branch default_ref current_primary_branch default_branch
+
+  [[ -d "$worktree_path" ]] || return 1
+  worktree_registration_matches "$repository" "$worktree_path" "$expected_branch_ref" || return 1
+  worktree_status=$(git -C "$worktree_path" status --porcelain=v1 --untracked-files=all 2>/dev/null) || return 1
+  [[ -z "$worktree_status" ]] || return 1
+  in_progress_operation "$worktree_path" && return 1
+  actual_sha=$(git -C "$worktree_path" rev-parse --verify HEAD 2>/dev/null) || return 1
+  [[ "$actual_sha" == "$expected_sha" ]] || return 1
+  git -C "$repository" fetch --prune origin >/dev/null 2>&1 || return 1
+  default_ref=$(live_default_remote_ref "$repository" || true)
+  [[ -n "$default_ref" ]] || return 1
+  default_branch=${default_ref#refs/remotes/origin/}
+  current_primary_branch=$(git -C "$repository" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+  [[ "$current_primary_branch" == "$default_branch" ]] || return 1
+  branch=${expected_branch_ref#refs/heads/}
+  [[ "$branch" != "$expected_branch_ref" ]] || branch=
+  safe_commit_reason "$repository" "$default_ref" "$branch" "$actual_sha" >/dev/null
+}
+
+apply_deletions() {
+  local index repository worktree_path branch expected_sha expected_branch_ref actual_sha default_ref reason mode
+  local default_branch current_primary_branch
+
+  for (( index = 1; index <= ${#safe_worktree_paths[@]}; index++ )); do
+    repository=${safe_worktree_repos[$index]}
+    worktree_path=${safe_worktree_paths[$index]}
+    reason=${safe_worktree_reasons[$index]}
+    expected_sha=${safe_worktree_shas[$index]}
+    expected_branch_ref=${safe_worktree_branch_refs[$index]}
+    if ! worktree_still_safe "$repository" "$worktree_path" "$expected_sha" "$expected_branch_ref"; then
+      print -u2 -- "FAILED worktree $worktree_path: changed or no longer proven safe after audit"
+      (( failed_deletions += 1 ))
+      continue
+    fi
+    if git -C "$repository" worktree remove "$worktree_path"; then
+      print -- "REMOVED worktree $worktree_path: $reason"
+    else
+      print -u2 -- "FAILED worktree $worktree_path: remove failed"
+      (( failed_deletions += 1 ))
+    fi
+  done
+
+  for (( index = 1; index <= ${#safe_branch_names[@]}; index++ )); do
+    repository=${safe_branch_repos[$index]}
+    branch=${safe_branch_names[$index]}
+    expected_sha=${safe_branch_shas[$index]}
+    mode=${safe_branch_modes[$index]}
+    reason=${safe_branch_reasons[$index]}
+    actual_sha=$(git -C "$repository" rev-parse --verify "refs/heads/$branch" 2>/dev/null || true)
+    if [[ "$actual_sha" != "$expected_sha" || -z "$actual_sha" ]]; then
+      print -u2 -- "FAILED branch $branch: branch changed after audit"
+      (( failed_deletions += 1 ))
+      continue
+    fi
+    if branch_is_checked_out "$repository" "$branch"; then
+      print -u2 -- "FAILED branch $branch: still checked out"
+      (( failed_deletions += 1 ))
+      continue
+    fi
+    if ! git -C "$repository" fetch --prune origin >/dev/null 2>&1; then
+      print -u2 -- "FAILED branch $branch: fetch failed during revalidation"
+      (( failed_deletions += 1 ))
+      continue
+    fi
+    default_ref=$(live_default_remote_ref "$repository" || true)
+    if [[ -z "$default_ref" ]] || ! safe_commit_reason "$repository" "$default_ref" "$branch" "$actual_sha" >/dev/null; then
+      print -u2 -- "FAILED branch $branch: no longer proven safe"
+      (( failed_deletions += 1 ))
+      continue
+    fi
+    default_branch=${default_ref#refs/remotes/origin/}
+    current_primary_branch=$(git -C "$repository" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+    if [[ "$current_primary_branch" != "$default_branch" ]]; then
+      print -u2 -- "FAILED branch $branch: primary worktree is no longer on $default_branch"
+      (( failed_deletions += 1 ))
+      continue
+    fi
+    if [[ "$mode" == merged ]]; then
+      if git -C "$repository" branch -d -- "$branch" >/dev/null; then
+        print -- "REMOVED branch $branch: $reason"
+      else
+        print -u2 -- "FAILED branch $branch: delete failed"
+        (( failed_deletions += 1 ))
+      fi
+    elif git -C "$repository" branch -D -- "$branch" >/dev/null; then
+      print -- "REMOVED branch $branch: $reason"
+    else
+      print -u2 -- "FAILED branch $branch: delete failed"
+      (( failed_deletions += 1 ))
+    fi
+  done
+}
+
+discover_repositories
+for repository in "${repositories[@]}"; do
+  audit_repository "$repository"
+done
+
+print --
+print -- "Repositories scanned: $repositories_scanned"
+print -- "Repositories excluded: $repositories_excluded"
+print -- "SAFE worktrees: ${#safe_worktree_paths[@]}"
+print -- "SAFE branches: ${#safe_branch_names[@]}"
+print -- "Kept items: $kept_items"
+
+if [[ "$apply" != true ]]; then
+  print -- 'Dry run: rerun with --apply to delete only the SAFE items.'
+  exit 0
+fi
+
+if (( ${#safe_worktree_paths[@]} == 0 && ${#safe_branch_names[@]} == 0 )); then
+  print -- 'Nothing safe to delete.'
+  exit 0
+fi
+
+if [[ "$assume_yes" != true ]]; then
+  print -n -- 'Delete all items marked SAFE? [y/N] '
+  read -r confirmation
+  [[ "$confirmation" == [Yy] ]] || {
+    print -- 'No changes made.'
+    exit 0
+  }
+fi
+
+apply_deletions
+(( failed_deletions == 0 )) || exit 1
