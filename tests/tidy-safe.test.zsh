@@ -1,5 +1,6 @@
 #!/usr/bin/env zsh
 set -euo pipefail
+unsetopt bg_nice
 
 repo_root=${0:A:h:h}
 tidy_safe="$repo_root/bin/tidy-safe"
@@ -85,21 +86,27 @@ print mismatch > "$scope/mismatched-pr/mismatch.txt"
 git_in "$scope/mismatched-pr" add mismatch.txt
 git_in "$scope/mismatched-pr" commit -m 'local commit after merged PR' >/dev/null
 
+git_in "$repository" worktree add -b wrong-base-pr "$scope/wrong-base-pr" main >/dev/null
+print wrong-base > "$scope/wrong-base-pr/wrong-base.txt"
+git_in "$scope/wrong-base-pr" add wrong-base.txt
+git_in "$scope/wrong-base-pr" commit -m 'PR merged to a non-default base' >/dev/null
+export TIDY_SAFE_TEST_WRONG_BASE_SHA=$(git_in "$scope/wrong-base-pr" rev-parse HEAD)
+
 fake_bin="$test_root/fake-bin"
 mkdir "$fake_bin"
 cat > "$fake_bin/gh" <<'EOF'
 #!/usr/bin/env zsh
 head_branch=
+base_branch=
 while (( $# > 0 )); do
-  if [[ "$1" == --head ]]; then
-    head_branch=$2
-    break
-  fi
+  [[ "$1" == --head ]] && head_branch=$2
+  [[ "$1" == --base ]] && base_branch=$2
   shift
 done
 case "$head_branch" in
-  squash-merged) print -- "$TIDY_SAFE_TEST_MERGED_SHA" ;;
+  squash-merged) [[ "$base_branch" == main ]] && print -- "$TIDY_SAFE_TEST_MERGED_SHA" ;;
   mismatched-pr) print -- 0000000000000000000000000000000000000000 ;;
+  wrong-base-pr) [[ "$base_branch" == release ]] && print -- "$TIDY_SAFE_TEST_WRONG_BASE_SHA" ;;
 esac
 EOF
 chmod +x "$fake_bin/gh"
@@ -115,6 +122,7 @@ assert_contains "$dry_run" "SAFE worktree $scope/squash-merged"
 assert_contains "$dry_run" "KEEP worktree $scope/unmerged-clean: unmerged"
 assert_contains "$dry_run" "KEEP worktree $scope/dirty-merged: dirty"
 assert_contains "$dry_run" "KEEP worktree $scope/mismatched-pr: unmerged"
+assert_contains "$dry_run" "KEEP worktree $scope/wrong-base-pr: unmerged"
 assert_contains "$dry_run" 'Dry run: rerun with --apply to delete only the SAFE items.'
 assert_exists "$scope/merged-clean"
 assert_exists "$scope/squash-merged"
@@ -129,16 +137,61 @@ assert_missing "$scope/squash-merged"
 assert_exists "$scope/unmerged-clean"
 assert_exists "$scope/dirty-merged"
 assert_exists "$scope/mismatched-pr"
+assert_exists "$scope/wrong-base-pr"
 git_in "$repository" show-ref --verify --quiet refs/heads/merged-clean && fail 'merged-clean branch still exists'
 git_in "$repository" show-ref --verify --quiet refs/heads/squash-merged && fail 'squash-merged branch still exists'
 git_in "$repository" show-ref --verify --quiet refs/heads/unmerged-clean || fail 'unmerged-clean branch was deleted'
 git_in "$repository" show-ref --verify --quiet refs/heads/mismatched-pr || fail 'mismatched-pr branch was deleted'
+git_in "$repository" show-ref --verify --quiet refs/heads/wrong-base-pr || fail 'wrong-base-pr branch was deleted'
+
+race_worktree="$scope/detached-race"
+git_in "$repository" worktree add --detach "$race_worktree" main >/dev/null
+race_fifo="$test_root/race-confirmation"
+race_output_file="$test_root/race-output"
+mkfifo "$race_fifo"
+exec {race_fd}<> "$race_fifo"
+(cd "$repository" && "$tidy_safe" --apply < "$race_fifo" > "$race_output_file" 2>&1) &
+race_pid=$!
+for _ in {1..250}; do
+  grep -q 'Delete all items marked SAFE?' "$race_output_file" 2>/dev/null && break
+  sleep 0.02
+done
+grep -q 'Delete all items marked SAFE?' "$race_output_file" 2>/dev/null || fail 'timed out waiting for apply confirmation'
+print race > "$race_worktree/race.txt"
+git_in "$race_worktree" add race.txt
+git_in "$race_worktree" commit -m 'advance after audit' >/dev/null
+print -u "$race_fd" y
+exec {race_fd}>&-
+if wait "$race_pid"; then
+  race_status=0
+else
+  race_status=$?
+fi
+race_output=$(<"$race_output_file")
+[[ "$race_status" == 1 ]] || fail "expected raced apply to exit 1, got $race_status"
+assert_contains "$race_output" "FAILED worktree $race_worktree: changed or no longer proven safe after audit"
+assert_exists "$race_worktree"
 
 recursive_output=$(cd "$scope" && "$tidy_safe" --recursive)
 assert_contains "$recursive_output" 'Repositories scanned: 1'
 excluded_output=$(cd "$scope" && "$tidy_safe" --recursive --exclude repository)
 assert_contains "$excluded_output" "EXCLUDED repository $repository"
 assert_contains "$excluded_output" 'Repositories scanned: 0'
+
+default_scope="$test_root/default-change"
+default_repository="$default_scope/repository"
+mkdir "$default_scope"
+git_in "$default_scope" clone "$remote" "$default_repository" >/dev/null
+git_in "$seed" switch -c trunk >/dev/null
+print trunk > "$seed/trunk.txt"
+git_in "$seed" add trunk.txt
+git_in "$seed" commit -m 'new remote default' >/dev/null
+git_in "$seed" push -u origin trunk >/dev/null
+git --git-dir="$remote" symbolic-ref HEAD refs/heads/trunk
+git_in "$default_repository" fetch origin >/dev/null
+[[ "$(git_in "$default_repository" symbolic-ref --short refs/remotes/origin/HEAD)" == origin/main ]] || fail 'test requires a stale cached origin/HEAD'
+default_output=$(cd "$default_repository" && "$tidy_safe")
+assert_contains "$default_output" 'SKIP repository: primary worktree is on main, not trunk'
 
 if grep -qi groundcrew "$tidy_safe"; then
   fail 'tidy-safe contains Groundcrew-specific code'
