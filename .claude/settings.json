@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "claude-fable-5[1m]",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "DISABLE_AUTOUPDATER": "1",
@@ -162,7 +163,8 @@
   "skillOverrides": {
     "dd-apm": "off",
     "dd-code-generation": "off",
-    "cb-to-tasks": "off"
+    "cb-to-tasks": "off",
+    "metabase-to-hex": "off"
   },
   "disableBundledSkills": true,
   "hooks": {
