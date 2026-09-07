@@ -5,7 +5,7 @@
 "npm:skills" = "latest"
 "npm:@tobilu/qmd" = "latest"
 node = "lts"
-aube = "latest"
+"github:aubepkg/aube" = "latest"
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
