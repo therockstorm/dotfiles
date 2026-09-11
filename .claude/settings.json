@@ -115,7 +115,6 @@
       "Bash(pip3 list *)",
       "Bash(pup *)",
       "Bash(rg *)",
-      "Bash(rtk *)",
       "Bash(src search *)",
       "Bash(tree *)",
       "Bash(wc *)",
@@ -175,17 +174,6 @@
           {
             "type": "command",
             "command": "afplay -v 0.35 /System/Library/Sounds/Submarine.aiff"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rtk hook claude"
           }
         ]
       }

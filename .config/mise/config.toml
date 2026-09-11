@@ -42,9 +42,7 @@ idiomatic_version_file_enable_tools = ["node"]
 #     personality.
 #   work context: ~/.config/groundcrew/ and friends reference internal work
 #     repos — copy by hand on work machines (see README "Migrating from an
-#     old machine"). ~/.claude/hooks/rtk-rewrite.sh, the only hook
-#     settings.json references, is created by `rtk init -g` in
-#     [tasks.bootstrap].
+#     old machine").
 "~/.claude/CLAUDE.md" = { source = "~/dev/dotfiles/.claude/CLAUDE.md" }
 "~/.claude/settings.json" = { source = "~/dev/dotfiles/.claude/settings.json" }
 "~/.claude/statusline.sh" = { source = "~/dev/dotfiles/.claude/statusline.sh" }
@@ -113,8 +111,8 @@ static-only = true
 
 # mise runs this task as the final step of `mise bootstrap`. Homebrew owns
 # system packages; Claude Code and Codex use their native installers so updates
-# land ASAP. Guarded where possible; rtk init is idempotent. Coexists with
-# employer bootstraps on work machines.
+# land ASAP. Guarded where possible; coexists with employer bootstraps on
+# work machines.
 [tasks.bootstrap]
 description = "Install Homebrew packages, agent CLIs, and caps-to-escape"
 run = """
@@ -128,8 +126,6 @@ command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | b
 # CODEX_NON_INTERACTIVE: the installer's "Start Codex now?" prompt reads
 # /dev/tty and hangs the bootstrap otherwise.
 command -v codex >/dev/null 2>&1 || curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
-rtk init -g --hook-only
-rtk init -g --codex
 # Load the caps-to-escape LaunchAgent ([dotfiles] copies the plist; see the
 # comment there for why mise's launchd module isn't used). RunAtLoad fires
 # the remap immediately; already-loaded is the common case after first run.

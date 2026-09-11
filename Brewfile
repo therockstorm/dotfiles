@@ -22,7 +22,6 @@ brew "nextdns"
 brew "openclaw/tap/gogcli", trusted: true
 brew "pinentry-mac"
 brew "ripgrep"
-brew "rtk"
 brew "shellcheck"
 brew "snowflake-cli"
 brew "sqlite"
