@@ -71,6 +71,7 @@ git_in "$repository" worktree add -b unmerged-clean "$scope/unmerged-clean" main
 print unmerged > "$scope/unmerged-clean/unmerged.txt"
 git_in "$scope/unmerged-clean" add unmerged.txt
 git_in "$scope/unmerged-clean" commit -m 'unmerged change' >/dev/null
+export TIDY_SAFE_TEST_UNMERGED_SHA=$(git_in "$scope/unmerged-clean" rev-parse HEAD)
 
 git_in "$repository" worktree add -b dirty-merged "$scope/dirty-merged" main >/dev/null
 print dirty > "$scope/dirty-merged/untracked.txt"
@@ -80,11 +81,13 @@ print squash > "$scope/squash-merged/squash.txt"
 git_in "$scope/squash-merged" add squash.txt
 git_in "$scope/squash-merged" commit -m 'squash merged change' >/dev/null
 export TIDY_SAFE_TEST_MERGED_SHA=$(git_in "$scope/squash-merged" rev-parse HEAD)
+git_in "$repository" branch local-pr-alias "$TIDY_SAFE_TEST_MERGED_SHA"
 
 git_in "$repository" worktree add -b mismatched-pr "$scope/mismatched-pr" main >/dev/null
 print mismatch > "$scope/mismatched-pr/mismatch.txt"
 git_in "$scope/mismatched-pr" add mismatch.txt
 git_in "$scope/mismatched-pr" commit -m 'local commit after merged PR' >/dev/null
+export TIDY_SAFE_TEST_MISMATCHED_SHA=$(git_in "$scope/mismatched-pr" rev-parse HEAD)
 
 git_in "$repository" worktree add -b wrong-base-pr "$scope/wrong-base-pr" main >/dev/null
 print wrong-base > "$scope/wrong-base-pr/wrong-base.txt"
@@ -96,6 +99,29 @@ fake_bin="$test_root/fake-bin"
 mkdir "$fake_bin"
 cat > "$fake_bin/gh" <<'EOF'
 #!/usr/bin/env zsh
+if [[ "$1" == api ]]; then
+  endpoint=$2
+  shift 2
+  jq_filter=
+  while (( $# > 0 )); do
+    [[ "$1" == --jq ]] && jq_filter=$2
+    shift
+  done
+  head_sha=${endpoint:h:t}
+  base_branch=main
+  merged_at=2026-09-01T00:00:00Z
+  case "$head_sha" in
+    "$TIDY_SAFE_TEST_MERGED_SHA") ;;
+    "$TIDY_SAFE_TEST_MISMATCHED_SHA") head_sha=0000000000000000000000000000000000000000 ;;
+    "$TIDY_SAFE_TEST_WRONG_BASE_SHA") base_branch=release ;;
+    "$TIDY_SAFE_TEST_UNMERGED_SHA") merged_at= ;;
+    *) print '[]' | jq -r "$jq_filter"; exit ;;
+  esac
+  jq -nc --arg sha "$head_sha" --arg base "$base_branch" --arg merged "$merged_at" \
+    '[{head: {sha: $sha}, base: {ref: $base}, merged_at: (if $merged == "" then null else $merged end)}]' |
+    jq -r "$jq_filter"
+  exit
+fi
 head_branch=
 base_branch=
 while (( $# > 0 )); do
@@ -119,6 +145,7 @@ assert_contains "$function_kinds" 'tidy-safe: function'
 dry_run=$(cd "$repository" && "$tidy_safe")
 assert_contains "$dry_run" "SAFE worktree $scope/merged-clean"
 assert_contains "$dry_run" "SAFE worktree $scope/squash-merged"
+assert_contains "$dry_run" 'SAFE branch local-pr-alias'
 assert_contains "$dry_run" "KEEP worktree $scope/unmerged-clean: unmerged"
 assert_contains "$dry_run" "KEEP worktree $scope/dirty-merged: dirty"
 assert_contains "$dry_run" "KEEP worktree $scope/mismatched-pr: unmerged"
@@ -132,6 +159,7 @@ assert_contains "$apply_output" "REMOVED worktree $scope/merged-clean"
 assert_contains "$apply_output" "REMOVED worktree $scope/squash-merged"
 assert_contains "$apply_output" 'REMOVED branch merged-clean'
 assert_contains "$apply_output" 'REMOVED branch squash-merged'
+assert_contains "$apply_output" 'REMOVED branch local-pr-alias'
 assert_missing "$scope/merged-clean"
 assert_missing "$scope/squash-merged"
 assert_exists "$scope/unmerged-clean"
@@ -140,6 +168,7 @@ assert_exists "$scope/mismatched-pr"
 assert_exists "$scope/wrong-base-pr"
 git_in "$repository" show-ref --verify --quiet refs/heads/merged-clean && fail 'merged-clean branch still exists'
 git_in "$repository" show-ref --verify --quiet refs/heads/squash-merged && fail 'squash-merged branch still exists'
+git_in "$repository" show-ref --verify --quiet refs/heads/local-pr-alias && fail 'local-pr-alias branch still exists'
 git_in "$repository" show-ref --verify --quiet refs/heads/unmerged-clean || fail 'unmerged-clean branch was deleted'
 git_in "$repository" show-ref --verify --quiet refs/heads/mismatched-pr || fail 'mismatched-pr branch was deleted'
 git_in "$repository" show-ref --verify --quiet refs/heads/wrong-base-pr || fail 'wrong-base-pr branch was deleted'
@@ -174,9 +203,48 @@ assert_exists "$race_worktree"
 
 recursive_output=$(cd "$scope" && "$tidy_safe" --recursive)
 assert_contains "$recursive_output" 'Repositories scanned: 1'
+assert_contains "$recursive_output" 'Kept items: 5'
+
+no_origin_repository="$scope/no-origin"
+git_in "$scope" init --initial-branch=main "$no_origin_repository" >/dev/null
+print local > "$no_origin_repository/README.md"
+git_in "$no_origin_repository" add README.md
+git_in "$no_origin_repository" commit -m 'local experiment' >/dev/null
+skipped_output=$(cd "$scope" && "$tidy_safe" --recursive)
+assert_contains "$skipped_output" 'SKIP repository: origin remote is missing'
+assert_contains "$skipped_output" 'Repositories scanned: 1'
+assert_contains "$skipped_output" 'Kept items: 5'
+assert_contains "$skipped_output" 'Repositories skipped: 1'
+
 excluded_output=$(cd "$scope" && "$tidy_safe" --recursive --exclude repository)
-assert_contains "$excluded_output" "EXCLUDED repository $repository"
+assert_contains "$excluded_output" "EXCLUDED directory $repository"
 assert_contains "$excluded_output" 'Repositories scanned: 0'
+
+exclusion_scope="$test_root/exclusions"
+for fixture in "$exclusion_scope/archive data/nested" "$exclusion_scope/archive data-sibling"; do
+  mkdir -p "$fixture"
+  git_in "$fixture" init --initial-branch=main >/dev/null
+  git_in "$fixture" commit --allow-empty -m 'local experiment' >/dev/null
+done
+for exclusion in "$exclusion_scope/archive data" 'archive data'; do
+  subtree_output=$(cd "$test_root" && "$tidy_safe" --recursive "$exclusion_scope" --exclude "$exclusion")
+  [[ "$subtree_output" != *"REPOSITORY $exclusion_scope/archive data/nested"* ]] || fail 'scanned an excluded subtree'
+  assert_contains "$subtree_output" "EXCLUDED directory $exclusion_scope/archive data"
+  assert_contains "$subtree_output" "REPOSITORY $exclusion_scope/archive data-sibling"
+  assert_contains "$subtree_output" 'Directories excluded: 1'
+  assert_contains "$subtree_output" 'Repositories skipped: 1'
+done
+root_excluded_output=$(cd "$test_root" && "$tidy_safe" --recursive "$exclusion_scope/archive data/nested" --exclude "$exclusion_scope/archive data")
+assert_contains "$root_excluded_output" "EXCLUDED directory $exclusion_scope/archive data/nested"
+assert_contains "$root_excluded_output" 'Repositories skipped: 0'
+assert_contains "$root_excluded_output" 'Directories excluded: 1'
+
+excluded_worktree="$exclusion_scope/archive data/linked"
+git_in "$repository" worktree add -b excluded-linked "$excluded_worktree" main >/dev/null
+excluded_apply=$(cd "$scope" && "$tidy_safe" --recursive --exclude "$exclusion_scope/archive data" --apply --yes)
+assert_exists "$excluded_worktree"
+assert_contains "$excluded_apply" "KEEP worktree $excluded_worktree: excluded"
+git_in "$repository" show-ref --verify --quiet refs/heads/excluded-linked || fail 'excluded worktree branch was deleted'
 
 default_scope="$test_root/default-change"
 default_repository="$default_scope/repository"
@@ -192,6 +260,8 @@ git_in "$default_repository" fetch origin >/dev/null
 [[ "$(git_in "$default_repository" symbolic-ref --short refs/remotes/origin/HEAD)" == origin/main ]] || fail 'test requires a stale cached origin/HEAD'
 default_output=$(cd "$default_repository" && "$tidy_safe")
 assert_contains "$default_output" 'SKIP repository: primary worktree is on main, not trunk'
+assert_contains "$default_output" 'Kept items: 0'
+assert_contains "$default_output" 'Repositories skipped: 1'
 
 if grep -qi groundcrew "$tidy_safe"; then
   fail 'tidy-safe contains Groundcrew-specific code'

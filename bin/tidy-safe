@@ -12,7 +12,8 @@ typeset -a safe_worktree_shas safe_worktree_branch_refs
 typeset -a safe_branch_repos safe_branch_names safe_branch_shas safe_branch_modes safe_branch_reasons
 typeset -A merged_proof_cache
 repositories_scanned=0
-repositories_excluded=0
+directories_excluded=0
+repositories_skipped=0
 kept_items=0
 failed_deletions=0
 
@@ -28,7 +29,7 @@ Options:
   --yes                   Do not prompt when used with --apply.
   --recursive [ROOT]      Discover and deduplicate repositories below ROOT.
                           ROOT defaults to the current directory.
-  --exclude NAME_OR_PATH  Skip a repository by primary directory name or path.
+  --exclude NAME_OR_PATH  Skip a directory tree by directory name or path.
                           Repeat this option to add exclusions.
   -h, --help              Show this help.
 
@@ -92,11 +93,13 @@ primary_worktree() {
 is_excluded() {
   local repository=$1 exclusion absolute_exclusion
   for exclusion in "${excludes[@]}"; do
-    if [[ "$exclusion" == "$repository" || "$exclusion" == "${repository:t}" ]]; then
+    if [[ "$exclusion" != */* && "$exclusion" != . && "$exclusion" != .. &&
+          ( "$repository" == */"$exclusion" || "$repository" == */"$exclusion"/* ) ]]; then
       return 0
     fi
     absolute_exclusion=$(absolute_directory "$exclusion" 2>/dev/null || true)
-    if [[ -n "$absolute_exclusion" && "$absolute_exclusion" == "$repository" ]]; then
+    if [[ -n "$absolute_exclusion" &&
+          ( "$repository" == "$absolute_exclusion" || "$repository" == "${absolute_exclusion%/}/"* ) ]]; then
       return 0
     fi
   done
@@ -104,12 +107,35 @@ is_excluded() {
 }
 
 discover_repositories() {
-  local root marker candidate common primary
+  local root marker candidate common primary exclusion match_kind pattern
+  local -a prune_matches
   typeset -A seen_common
 
   if [[ "$recursive" == true ]]; then
     root=$(absolute_directory "${recursive_root:-$PWD}") || die "recursive root does not exist: ${recursive_root:-$PWD}"
+    if is_excluded "$root"; then
+      print -- "EXCLUDED directory $root"
+      (( directories_excluded += 1 ))
+      return
+    fi
+    for exclusion in "${excludes[@]}"; do
+      match_kind=-name
+      pattern=$exclusion
+      if [[ "$exclusion" == */* || "$exclusion" == . || "$exclusion" == .. ]]; then
+        pattern=$(absolute_directory "$exclusion" 2>/dev/null || true)
+        [[ -n "$pattern" ]] || continue
+        match_kind=-path
+      fi
+      # find treats these characters as patterns; exclusions are literal names.
+      pattern=$(print -r -- "$pattern" | sed 's/[][?*\\]/\\&/g')
+      prune_matches+=("$match_kind" "$pattern" -o)
+    done
     while IFS= read -r marker; do
+      if [[ "$marker" == 'EXCLUDED directory '* ]]; then
+        print -r -- "$marker"
+        (( directories_excluded += 1 ))
+        continue
+      fi
       candidate=${marker:h}
       common=$(git -C "$candidate" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
       primary=$(primary_worktree "$candidate" || true)
@@ -122,6 +148,7 @@ discover_repositories() {
       repositories+=("$primary")
     done < <(
       find "$root" \
+        -type d \( "${prune_matches[@]}" -false \) -prune -exec printf 'EXCLUDED directory %s\n' {} \; -o \
         -type d -name node_modules -prune -o \
         -type d -name .git -print -prune -o \
         -type f -name .git -print
@@ -171,9 +198,19 @@ exact_merged_pr_head() {
         --limit 100 \
         --json headRefOid,mergedAt \
         --jq '.[] | select(.mergedAt != null) | .headRefOid' 2>/dev/null
-  ) || return 1
+  ) || output=
 
   if print -r -- "$output" | grep -qxF -- "$sha"; then
+    merged_proof_cache[$key]=yes
+    return 0
+  fi
+
+  output=$(
+    cd "$repository" &&
+      gh api "repos/{owner}/{repo}/commits/$sha/pulls" --paginate \
+        --jq '.[] | select(.merged_at != null) | [.base.ref, .head.sha] | @tsv' 2>/dev/null
+  ) || return 1
+  if print -r -- "$output" | grep -qxF -- "$default_branch"$'\t'"$sha"; then
     merged_proof_cache[$key]=yes
     return 0
   fi
@@ -211,6 +248,11 @@ audit_worktree() {
   local worktree_status sha branch reason
   [[ "$worktree_path" != "$repository" ]] || return 0
 
+  if is_excluded "$worktree_path"; then
+    print -- "  KEEP worktree $worktree_path: excluded"
+    (( kept_items += 1 ))
+    return 0
+  fi
   if [[ "$locked" == true ]]; then
     print -- "  KEEP worktree $worktree_path: locked"
     (( kept_items += 1 ))
@@ -263,8 +305,8 @@ audit_repository() {
   typeset -A safe_paths checked_out_refs
 
   if is_excluded "$repository"; then
-    print -- "EXCLUDED repository $repository"
-    (( repositories_excluded += 1 ))
+    print -- "EXCLUDED directory $repository"
+    (( directories_excluded += 1 ))
     return 0
   fi
 
@@ -272,25 +314,25 @@ audit_repository() {
   remote_url=$(git -C "$repository" remote get-url origin 2>/dev/null || true)
   if [[ -z "$remote_url" ]]; then
     print -- '  SKIP repository: origin remote is missing'
-    (( kept_items += 1 ))
+    (( repositories_skipped += 1 ))
     return 0
   fi
   if ! git -C "$repository" fetch --prune origin >/dev/null 2>&1; then
     print -- '  SKIP repository: fetch failed'
-    (( kept_items += 1 ))
+    (( repositories_skipped += 1 ))
     return 0
   fi
   default_ref=$(live_default_remote_ref "$repository" || true)
   if [[ -z "$default_ref" ]]; then
     print -- '  SKIP repository: remote default branch is ambiguous or missing'
-    (( kept_items += 1 ))
+    (( repositories_skipped += 1 ))
     return 0
   fi
   default_branch=${default_ref#refs/remotes/origin/}
   current_branch=$(git -C "$repository" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
   if [[ "$current_branch" != "$default_branch" ]]; then
     print -- "  SKIP repository: primary worktree is on ${current_branch:-detached HEAD}, not $default_branch"
-    (( kept_items += 1 ))
+    (( repositories_skipped += 1 ))
     return 0
   fi
   (( repositories_scanned += 1 ))
@@ -495,7 +537,8 @@ done
 
 print --
 print -- "Repositories scanned: $repositories_scanned"
-print -- "Repositories excluded: $repositories_excluded"
+print -- "Directories excluded: $directories_excluded"
+print -- "Repositories skipped: $repositories_skipped"
 print -- "SAFE worktrees: ${#safe_worktree_paths[@]}"
 print -- "SAFE branches: ${#safe_branch_names[@]}"
 print -- "Kept items: $kept_items"
