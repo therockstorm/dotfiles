@@ -7,7 +7,7 @@ mise owns runtimes, dotfile symlinks, macOS defaults, repositories, and tasks.
 ## Installation
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/main/install.sh | bash
 ```
 
 Idempotent — rerun at any point. On a brand-new Mac it triggers Apple's

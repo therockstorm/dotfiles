@@ -2,7 +2,7 @@
 # Stage-one installer: Xcode Command Line Tools, Homebrew, mise, repo clone,
 # seed symlink, converge. Idempotent — rerun at any point.
 #
-#   curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/master/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/therockstorm/dotfiles/main/install.sh | bash
 set -euo pipefail
 
 DOTFILES="$HOME/dev/dotfiles"
