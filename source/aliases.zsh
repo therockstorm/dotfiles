@@ -164,10 +164,10 @@ ghurl() {
 
 # tidy: remove non-primary, non-Groundcrew git worktrees and disposable branches.
 #
-# Lists worktrees outside .groundcrew/worktrees, prompts for confirmation,
-# and force-removes them. Then lists local branches outside crew/, prompts for
-# confirmation, and force-deletes them. Must be run from the primary worktree
-# with a checked-out branch (not detached HEAD).
+# Prunes stale registrations, then prompts to force-remove worktrees outside
+# .groundcrew/worktrees. Prompts to force-delete local branches outside crew/
+# that are no longer checked out. Must be run from the primary worktree with a
+# checked-out branch (not detached HEAD).
 tidy() {
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "tidy: not inside a git work tree" >&2
@@ -190,6 +190,8 @@ tidy() {
 
   local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
 
+  git worktree prune --expire now || return 1
+
   local worktrees=$(git worktree list --porcelain | sed -n 's/^worktree //p' | grep -Fxv -- "$primary" | grep -Fv -- '.groundcrew/worktrees')
   if [ -n "$worktrees" ]; then
     echo "Worktrees to remove:"
@@ -205,7 +207,7 @@ tidy() {
     echo "No worktrees to remove.\n"
   fi
 
-  local branches=$(git branch --format='%(refname:short)' | grep -v '^crew/' | grep -v "^${current_branch}\$" | { [ -n "$default_branch" ] && grep -v "^${default_branch}\$" || cat; })
+  local branches=$(git branch --format='%(refname:short) %(worktreepath)' | awk 'NF == 1 {print $1}' | grep -v '^crew/' | grep -Fxv -- "$current_branch" | { [ -n "$default_branch" ] && grep -Fxv -- "$default_branch" || cat; })
   if [ -n "$branches" ]; then
     echo "Branches to delete:"
     echo "$branches\n"
