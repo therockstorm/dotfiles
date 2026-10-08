@@ -442,7 +442,7 @@ worktree_still_safe() {
 }
 
 apply_deletions() {
-  local index repository worktree_path branch expected_sha expected_branch_ref actual_sha default_ref reason
+  local index repository worktree_path branch expected_sha expected_branch_ref actual_sha default_ref reason config_keys config_key
 
   for (( index = 1; index <= ${#safe_worktree_paths[@]}; index++ )); do
     repository=${safe_worktree_repos[$index]}
@@ -499,8 +499,27 @@ apply_deletions() {
       (( failed_deletions += 1 ))
       continue
     fi
-    if git -C "$repository" branch -D -- "$branch" >/dev/null; then
+    # Git compares the audited SHA while holding the ref lock. A concurrent
+    # branch update must fail deletion, rather than lose its unmerged tip.
+    if git -C "$repository" update-ref --no-deref -d "refs/heads/$branch" "$expected_sha"; then
       print -- "REMOVED branch $branch: $reason"
+      if git -C "$repository" show-ref --verify --quiet "refs/heads/$branch"; then
+        print -u2 -- "WARN branch $branch: recreated after deletion; configuration retained"
+        continue
+      fi
+      if ! config_keys=$(git -C "$repository" config --local --name-only --list); then
+        print -u2 -- "FAILED branch $branch: deleted, but could not read branch configuration"
+        (( failed_deletions += 1 ))
+        continue
+      fi
+      for config_key in "${(@f)config_keys}"; do
+        [[ "${config_key%.*}" == "branch.$branch" ]] || continue
+        if ! git -C "$repository" config --local --remove-section "branch.$branch"; then
+          print -u2 -- "FAILED branch $branch: deleted, but configuration cleanup failed"
+          (( failed_deletions += 1 ))
+        fi
+        break
+      done
     else
       print -u2 -- "FAILED branch $branch: delete failed"
       (( failed_deletions += 1 ))

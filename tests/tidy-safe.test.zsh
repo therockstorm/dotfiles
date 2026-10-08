@@ -303,6 +303,7 @@ assert_contains "$lagging_output" 'REMOVED branch lagging-local-branch'
 assert_missing "$lagging_safe"
 git_in "$lagging_repository" show-ref --verify --quiet refs/heads/lagging-safe && fail 'lagging-safe branch still exists'
 git_in "$lagging_repository" show-ref --verify --quiet refs/heads/lagging-local-branch && fail 'lagging-local-branch still exists'
+git_in "$lagging_repository" config --get branch.lagging-local-branch.remote && fail 'deleted branch configuration still exists'
 [[ "$(git_in "$lagging_repository" rev-parse HEAD)" == "$lagging_sha" ]] || fail 'advanced the primary main'
 
 # Advance a branch during apply's fetch, after its initial SHA check. The
@@ -310,6 +311,7 @@ git_in "$lagging_repository" show-ref --verify --quiet refs/heads/lagging-local-
 git_in "$lagging_repository" branch fetch-race origin/main >/dev/null
 export TIDY_SAFE_TEST_REAL_GIT=$(whence -p git)
 export TIDY_SAFE_TEST_FETCH_RACE_ARM="$test_root/fetch-race-arm"
+export TIDY_SAFE_TEST_DELETE_RACE_SHA="$test_root/delete-race-sha"
 cat > "$fake_bin/git" <<'EOF'
 #!/usr/bin/env zsh
 if [[ "$*" == *'fetch --prune origin'* && -e "$TIDY_SAFE_TEST_FETCH_RACE_ARM" ]]; then
@@ -319,6 +321,14 @@ if [[ "$*" == *'fetch --prune origin'* && -e "$TIDY_SAFE_TEST_FETCH_RACE_ARM" ]]
   old_sha=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse fetch-race)
   new_sha=$(print 'unmerged change during fetch' | "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" commit-tree "$tree" -p "$old_sha")
   "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" update-ref refs/heads/fetch-race "$new_sha" "$old_sha"
+fi
+if [[ "$*" == *'branch -D -- delete-race'* || "$*" == *'update-ref --no-deref -d refs/heads/delete-race '* ]]; then
+  directory=$2
+  tree=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse 'delete-race^{tree}')
+  old_sha=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse delete-race)
+  new_sha=$(print 'unmerged change immediately before deletion' | "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" commit-tree "$tree" -p "$old_sha")
+  "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" update-ref refs/heads/delete-race "$new_sha" "$old_sha"
+  print -r -- "$new_sha" > "$TIDY_SAFE_TEST_DELETE_RACE_SHA"
 fi
 exec "$TIDY_SAFE_TEST_REAL_GIT" "$@"
 EOF
@@ -342,6 +352,15 @@ if wait "$fetch_pid"; then
 fi
 assert_contains "$(<"$fetch_output_file")" 'FAILED branch fetch-race: changed or checked out during revalidation'
 git_in "$lagging_repository" show-ref --verify --quiet refs/heads/fetch-race || fail 'fetch-race branch was deleted'
+
+git_in "$lagging_repository" branch delete-race origin/main >/dev/null
+if (cd "$lagging_repository" && "$tidy_safe" --apply --yes > "$test_root/delete-race-output" 2>&1); then
+  fail 'deleted a branch that advanced immediately before deletion'
+fi
+assert_contains "$(<"$test_root/delete-race-output")" 'FAILED branch delete-race: delete failed'
+[[ "$(git_in "$lagging_repository" rev-parse delete-race)" == "$(<"$TIDY_SAFE_TEST_DELETE_RACE_SHA")" ]] || fail 'lost the concurrent unmerged commit'
+[[ "$(git_in "$lagging_repository" config --get branch.delete-race.remote)" == origin ]] || fail 'removed configuration for the retained branch'
+git_in "$lagging_repository" reflog exists refs/heads/delete-race || fail 'removed the retained branch reflog'
 
 default_scope="$test_root/default-change"
 default_repository="$default_scope/repository"
