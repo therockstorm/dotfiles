@@ -246,22 +246,186 @@ assert_exists "$excluded_worktree"
 assert_contains "$excluded_apply" "KEEP worktree $excluded_worktree: excluded"
 git_in "$repository" show-ref --verify --quiet refs/heads/excluded-linked || fail 'excluded worktree branch was deleted'
 
+feature_repository="$test_root/feature-primary"
+git_in "$test_root" clone "$remote" "$feature_repository" >/dev/null
+git_in "$feature_repository" switch -c primary-feature >/dev/null
+git_in "$feature_repository" commit --allow-empty -m 'unmerged primary work' >/dev/null
+primary_sha=$(git_in "$feature_repository" rev-parse HEAD)
+print primary-dirty > "$feature_repository/untracked.txt"
+feature_safe="$test_root/feature-safe"
+feature_dirty="$test_root/feature-dirty"
+feature_locked="$test_root/feature-locked"
+git_in "$feature_repository" worktree add -b feature-safe "$feature_safe" origin/main >/dev/null
+git_in "$feature_repository" worktree add -b feature-dirty "$feature_dirty" origin/main >/dev/null
+print dirty > "$feature_dirty/untracked.txt"
+git_in "$feature_repository" worktree add -b feature-locked "$feature_locked" origin/main >/dev/null
+git_in "$feature_repository" worktree lock "$feature_locked"
+feature_output=$(cd "$feature_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$feature_output" "REMOVED worktree $feature_safe"
+assert_contains "$feature_output" "KEEP worktree $feature_dirty: dirty"
+assert_contains "$feature_output" "KEEP worktree $feature_locked: locked"
+assert_missing "$feature_safe"
+assert_exists "$feature_dirty"
+assert_exists "$feature_locked"
+assert_exists "$feature_repository/untracked.txt"
+[[ "$(git_in "$feature_repository" symbolic-ref --short HEAD)" == primary-feature ]] || fail 'changed the primary branch'
+[[ "$(git_in "$feature_repository" rev-parse HEAD)" == "$primary_sha" ]] || fail 'changed the primary commit'
+
+git_in "$feature_repository" switch --detach >/dev/null
+detached_safe="$test_root/detached-primary-safe"
+git_in "$feature_repository" worktree add -b detached-primary-safe "$detached_safe" origin/main >/dev/null
+detached_output=$(cd "$feature_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$detached_output" "REMOVED worktree $detached_safe"
+assert_contains "$detached_output" 'KEEP branch primary-feature: unmerged'
+assert_missing "$detached_safe"
+assert_exists "$feature_repository/untracked.txt"
+[[ "$(git_in "$feature_repository" rev-parse HEAD)" == "$primary_sha" ]] || fail 'changed the detached primary commit'
+git_in "$feature_repository" symbolic-ref --quiet HEAD && fail 'reattached the primary HEAD'
+
+lagging_repository="$test_root/lagging-primary"
+git_in "$test_root" clone "$remote" "$lagging_repository" >/dev/null
+lagging_sha=$(git_in "$lagging_repository" rev-parse HEAD)
+git_in "$seed" fetch origin >/dev/null
+git_in "$seed" merge --ff-only origin/main >/dev/null
+git_in "$seed" branch old-upstream
+git_in "$seed" commit --allow-empty -m 'advance remote main' >/dev/null
+git_in "$seed" push origin main old-upstream >/dev/null
+git_in "$lagging_repository" fetch origin >/dev/null
+lagging_safe="$test_root/lagging-safe"
+git_in "$lagging_repository" worktree add -b lagging-safe "$lagging_safe" origin/main >/dev/null
+git_in "$lagging_repository" branch --unset-upstream lagging-safe
+git_in "$lagging_repository" branch lagging-local-branch origin/main >/dev/null
+git_in "$lagging_repository" branch --set-upstream-to=origin/old-upstream lagging-local-branch >/dev/null
+lagging_output=$(cd "$lagging_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$lagging_output" "REMOVED worktree $lagging_safe"
+assert_contains "$lagging_output" 'REMOVED branch lagging-safe'
+assert_contains "$lagging_output" 'REMOVED branch lagging-local-branch'
+assert_missing "$lagging_safe"
+git_in "$lagging_repository" show-ref --verify --quiet refs/heads/lagging-safe && fail 'lagging-safe branch still exists'
+git_in "$lagging_repository" show-ref --verify --quiet refs/heads/lagging-local-branch && fail 'lagging-local-branch still exists'
+git_in "$lagging_repository" config --get branch.lagging-local-branch.remote && fail 'deleted branch configuration still exists'
+[[ "$(git_in "$lagging_repository" rev-parse HEAD)" == "$lagging_sha" ]] || fail 'advanced the primary main'
+
+# Advance a branch during apply's fetch, after its initial SHA check. The
+# refreshed merge proof still applies to the audited SHA, not the new commit.
+git_in "$lagging_repository" branch fetch-race origin/main >/dev/null
+export TIDY_SAFE_TEST_REAL_GIT=$(whence -p git)
+export TIDY_SAFE_TEST_FETCH_RACE_ARM="$test_root/fetch-race-arm"
+export TIDY_SAFE_TEST_DELETE_RACE_SHA="$test_root/delete-race-sha"
+cat > "$fake_bin/git" <<'EOF'
+#!/usr/bin/env zsh
+if [[ "$*" == *'fetch --prune origin'* && -e "$TIDY_SAFE_TEST_FETCH_RACE_ARM" ]]; then
+  rm "$TIDY_SAFE_TEST_FETCH_RACE_ARM"
+  directory=$2
+  tree=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse 'fetch-race^{tree}')
+  old_sha=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse fetch-race)
+  new_sha=$(print 'unmerged change during fetch' | "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" commit-tree "$tree" -p "$old_sha")
+  "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" update-ref refs/heads/fetch-race "$new_sha" "$old_sha"
+fi
+if [[ "$*" == *'update-ref --no-deref -d refs/heads/delete-race '* ]]; then
+  directory=$2
+  tree=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse 'delete-race^{tree}')
+  old_sha=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse delete-race)
+  new_sha=$(print 'unmerged change immediately before deletion' | "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" commit-tree "$tree" -p "$old_sha")
+  "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" update-ref refs/heads/delete-race "$new_sha" "$old_sha"
+  print -r -- "$new_sha" > "$TIDY_SAFE_TEST_DELETE_RACE_SHA"
+fi
+exec "$TIDY_SAFE_TEST_REAL_GIT" "$@"
+EOF
+chmod +x "$fake_bin/git"
+fetch_fifo="$test_root/fetch-race-confirmation"
+fetch_output_file="$test_root/fetch-race-output"
+mkfifo "$fetch_fifo"
+exec {fetch_fd}<> "$fetch_fifo"
+(cd "$lagging_repository" && "$tidy_safe" --apply < "$fetch_fifo" > "$fetch_output_file" 2>&1) &
+fetch_pid=$!
+for _ in {1..250}; do
+  grep -q 'Delete all items marked SAFE?' "$fetch_output_file" 2>/dev/null && break
+  sleep 0.02
+done
+grep -q 'Delete all items marked SAFE?' "$fetch_output_file" 2>/dev/null || fail 'timed out waiting for fetch race confirmation'
+touch "$TIDY_SAFE_TEST_FETCH_RACE_ARM"
+print -u "$fetch_fd" y
+exec {fetch_fd}>&-
+if wait "$fetch_pid"; then
+  fail 'deleted a branch that advanced during fetch'
+fi
+assert_contains "$(<"$fetch_output_file")" 'FAILED branch fetch-race: changed or checked out during revalidation'
+git_in "$lagging_repository" show-ref --verify --quiet refs/heads/fetch-race || fail 'fetch-race branch was deleted'
+
+git_in "$lagging_repository" branch delete-race origin/main >/dev/null
+if (cd "$lagging_repository" && "$tidy_safe" --apply --yes > "$test_root/delete-race-output" 2>&1); then
+  fail 'deleted a branch that advanced immediately before deletion'
+fi
+assert_contains "$(<"$test_root/delete-race-output")" 'FAILED branch delete-race: delete failed'
+[[ "$(git_in "$lagging_repository" rev-parse delete-race)" == "$(<"$TIDY_SAFE_TEST_DELETE_RACE_SHA")" ]] || fail 'lost the concurrent unmerged commit'
+[[ "$(git_in "$lagging_repository" config --get branch.delete-race.remote)" == origin ]] || fail 'removed configuration for the retained branch'
+git_in "$lagging_repository" reflog exists refs/heads/delete-race || fail 'removed the retained branch reflog'
+
+operation_repository="$test_root/operation-primary"
+git_in "$test_root" clone "$remote" "$operation_repository" >/dev/null
+git_in "$operation_repository" switch -c rebase-protected >/dev/null
+print operation > "$operation_repository/operation.txt"
+git_in "$operation_repository" add operation.txt
+git_in "$operation_repository" commit -m 'merged operation fixture' >/dev/null
+git_in "$operation_repository" push origin HEAD:main >/dev/null
+editor="$test_root/edit-first.sh"
+cat > "$editor" <<'EOF'
+#!/bin/sh
+sed -i.bak '1s/^pick /edit /' "$1"
+EOF
+chmod +x "$editor"
+git_in "$operation_repository" -c sequence.editor="$editor" rebase -i --force-rebase HEAD~1 >/dev/null
+operation_sha=$(git_in "$operation_repository" rev-parse rebase-protected)
+operation_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$operation_output" 'KEEP branch rebase-protected: Git operation in progress'
+[[ "$(git_in "$operation_repository" rev-parse rebase-protected)" == "$operation_sha" ]] || fail 'deleted the primary rebase branch'
+git_in "$operation_repository" -c core.editor=true rebase --continue >/dev/null
+git_in "$operation_repository" switch main >/dev/null
+bisect_worktree="$test_root/bisect-protected"
+git_in "$operation_repository" worktree add -b bisect-protected "$bisect_worktree" origin/main >/dev/null
+git_in "$bisect_worktree" bisect start >/dev/null
+git_in "$bisect_worktree" bisect bad HEAD >/dev/null
+git_in "$bisect_worktree" bisect good HEAD~2 >/dev/null
+bisect_sha=$(git_in "$bisect_worktree" rev-parse bisect-protected)
+bisect_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$bisect_output" "KEEP worktree $bisect_worktree: Git operation in progress"
+assert_contains "$bisect_output" 'KEEP branch bisect-protected: Git operation in progress'
+assert_exists "$bisect_worktree"
+[[ "$(git_in "$operation_repository" rev-parse bisect-protected)" == "$bisect_sha" ]] || fail 'deleted the secondary bisect branch'
+git_in "$bisect_worktree" bisect reset >/dev/null
+
 default_scope="$test_root/default-change"
 default_repository="$default_scope/repository"
 mkdir "$default_scope"
 git_in "$default_scope" clone "$remote" "$default_repository" >/dev/null
+git_in "$seed" fetch origin >/dev/null
+git_in "$seed" merge --ff-only origin/main >/dev/null
 git_in "$seed" switch -c trunk >/dev/null
 print trunk > "$seed/trunk.txt"
 git_in "$seed" add trunk.txt
 git_in "$seed" commit -m 'new remote default' >/dev/null
 git_in "$seed" push -u origin trunk >/dev/null
 git --git-dir="$remote" symbolic-ref HEAD refs/heads/trunk
+git_in "$seed" switch main >/dev/null
+git_in "$seed" commit --allow-empty -m 'main-only change after default switched' >/dev/null
+git_in "$seed" push origin main >/dev/null
 git_in "$default_repository" fetch origin >/dev/null
 [[ "$(git_in "$default_repository" symbolic-ref --short refs/remotes/origin/HEAD)" == origin/main ]] || fail 'test requires a stale cached origin/HEAD'
+main_only_worktree="$default_scope/main-only"
+trunk_worktree="$default_scope/trunk-safe"
+git_in "$default_repository" worktree add -b main-only "$main_only_worktree" origin/main >/dev/null
+git_in "$default_repository" worktree add -b trunk-safe "$trunk_worktree" origin/trunk >/dev/null
 default_output=$(cd "$default_repository" && "$tidy_safe")
-assert_contains "$default_output" 'SKIP repository: primary worktree is on main, not trunk'
-assert_contains "$default_output" 'Kept items: 0'
-assert_contains "$default_output" 'Repositories skipped: 1'
+assert_contains "$default_output" "KEEP worktree $main_only_worktree: unmerged"
+assert_contains "$default_output" "SAFE worktree $trunk_worktree: merged into origin/trunk"
+assert_contains "$default_output" 'Kept items: 1'
+assert_contains "$default_output" 'Repositories scanned: 1'
+assert_contains "$default_output" 'Repositories skipped: 0'
+default_apply=$(cd "$default_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$default_apply" "REMOVED worktree $trunk_worktree"
+assert_missing "$trunk_worktree"
+assert_exists "$main_only_worktree"
 
 if grep -qi groundcrew "$tidy_safe"; then
   fail 'tidy-safe contains Groundcrew-specific code'
