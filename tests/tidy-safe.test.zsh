@@ -322,7 +322,7 @@ if [[ "$*" == *'fetch --prune origin'* && -e "$TIDY_SAFE_TEST_FETCH_RACE_ARM" ]]
   new_sha=$(print 'unmerged change during fetch' | "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" commit-tree "$tree" -p "$old_sha")
   "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" update-ref refs/heads/fetch-race "$new_sha" "$old_sha"
 fi
-if [[ "$*" == *'branch -D -- delete-race'* || "$*" == *'update-ref --no-deref -d refs/heads/delete-race '* ]]; then
+if [[ "$*" == *'update-ref --no-deref -d refs/heads/delete-race '* ]]; then
   directory=$2
   tree=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse 'delete-race^{tree}')
   old_sha=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse delete-race)
@@ -362,10 +362,45 @@ assert_contains "$(<"$test_root/delete-race-output")" 'FAILED branch delete-race
 [[ "$(git_in "$lagging_repository" config --get branch.delete-race.remote)" == origin ]] || fail 'removed configuration for the retained branch'
 git_in "$lagging_repository" reflog exists refs/heads/delete-race || fail 'removed the retained branch reflog'
 
+operation_repository="$test_root/operation-primary"
+git_in "$test_root" clone "$remote" "$operation_repository" >/dev/null
+git_in "$operation_repository" switch -c rebase-protected >/dev/null
+print operation > "$operation_repository/operation.txt"
+git_in "$operation_repository" add operation.txt
+git_in "$operation_repository" commit -m 'merged operation fixture' >/dev/null
+git_in "$operation_repository" push origin HEAD:main >/dev/null
+editor="$test_root/edit-first.sh"
+cat > "$editor" <<'EOF'
+#!/bin/sh
+sed -i.bak '1s/^pick /edit /' "$1"
+EOF
+chmod +x "$editor"
+git_in "$operation_repository" -c sequence.editor="$editor" rebase -i --force-rebase HEAD~1 >/dev/null
+operation_sha=$(git_in "$operation_repository" rev-parse rebase-protected)
+operation_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$operation_output" 'KEEP branch rebase-protected: Git operation in progress'
+[[ "$(git_in "$operation_repository" rev-parse rebase-protected)" == "$operation_sha" ]] || fail 'deleted the primary rebase branch'
+git_in "$operation_repository" -c core.editor=true rebase --continue >/dev/null
+git_in "$operation_repository" switch main >/dev/null
+bisect_worktree="$test_root/bisect-protected"
+git_in "$operation_repository" worktree add -b bisect-protected "$bisect_worktree" origin/main >/dev/null
+git_in "$bisect_worktree" bisect start >/dev/null
+git_in "$bisect_worktree" bisect bad HEAD >/dev/null
+git_in "$bisect_worktree" bisect good HEAD~2 >/dev/null
+bisect_sha=$(git_in "$bisect_worktree" rev-parse bisect-protected)
+bisect_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$bisect_output" "KEEP worktree $bisect_worktree: Git operation in progress"
+assert_contains "$bisect_output" 'KEEP branch bisect-protected: Git operation in progress'
+assert_exists "$bisect_worktree"
+[[ "$(git_in "$operation_repository" rev-parse bisect-protected)" == "$bisect_sha" ]] || fail 'deleted the secondary bisect branch'
+git_in "$bisect_worktree" bisect reset >/dev/null
+
 default_scope="$test_root/default-change"
 default_repository="$default_scope/repository"
 mkdir "$default_scope"
 git_in "$default_scope" clone "$remote" "$default_repository" >/dev/null
+git_in "$seed" fetch origin >/dev/null
+git_in "$seed" merge --ff-only origin/main >/dev/null
 git_in "$seed" switch -c trunk >/dev/null
 print trunk > "$seed/trunk.txt"
 git_in "$seed" add trunk.txt

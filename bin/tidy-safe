@@ -236,9 +236,20 @@ in_progress_operation() {
   for marker in MERGE_HEAD REBASE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START; do
     git -C "$worktree" rev-parse --verify --quiet "$marker" >/dev/null && return 0
   done
-  for marker in rebase-apply rebase-merge sequencer; do
-    git_path=$(git -C "$worktree" rev-parse --git-path "$marker" 2>/dev/null || true)
+  for marker in rebase-apply rebase-merge sequencer BISECT_START; do
+    git_path=$(git -C "$worktree" rev-parse --path-format=absolute --git-path "$marker" 2>/dev/null || true)
     [[ -n "$git_path" && -e "$git_path" ]] && return 0
+  done
+  return 1
+}
+
+repository_has_git_operation() {
+  local repository=$1 worktree_list line worktree_path
+  worktree_list=$(git -C "$repository" worktree list --porcelain) || return 0
+  for line in "${(@f)worktree_list}"; do
+    [[ "$line" == 'worktree '* ]] || continue
+    worktree_path=${line#worktree }
+    in_progress_operation "$worktree_path" && return 0
   done
   return 1
 }
@@ -300,7 +311,7 @@ audit_worktree() {
 }
 
 audit_repository() {
-  local repository=$1 default_ref default_branch remote_url
+  local repository=$1 default_ref default_branch remote_url branch_cleanup_blocked=false
   local worktree_path= branch_ref= locked=false prunable=false line branch sha reason
   typeset -A safe_paths checked_out_refs
 
@@ -374,9 +385,15 @@ audit_repository() {
     esac
   done < <(git -C "$repository" worktree list --porcelain; print)
 
+  repository_has_git_operation "$repository" && branch_cleanup_blocked=true
   while IFS= read -r branch; do
     [[ -n "$branch" && "$branch" != "$default_branch" ]] || continue
     (( ${+checked_out_refs[refs/heads/$branch]} )) && continue
+    if [[ "$branch_cleanup_blocked" == true ]]; then
+      print -- "  KEEP branch $branch: Git operation in progress or worktree status unavailable"
+      (( kept_items += 1 ))
+      continue
+    fi
     sha=$(git -C "$repository" rev-parse --verify "refs/heads/$branch")
     if ! reason=$(safe_commit_reason "$repository" "$default_ref" "$branch" "$sha"); then
       print -- "  KEEP branch $branch: unmerged"
@@ -474,8 +491,8 @@ apply_deletions() {
       (( failed_deletions += 1 ))
       continue
     fi
-    if branch_is_checked_out "$repository" "$branch"; then
-      print -u2 -- "FAILED branch $branch: still checked out"
+    if branch_is_checked_out "$repository" "$branch" || repository_has_git_operation "$repository"; then
+      print -u2 -- "FAILED branch $branch: checked out or Git operation in progress"
       (( failed_deletions += 1 ))
       continue
     fi
@@ -494,7 +511,7 @@ apply_deletions() {
     # is already proven safe against the live remote default; branch -d would
     # instead test potentially outdated local HEAD or upstream history.
     actual_sha=$(git -C "$repository" rev-parse --verify "refs/heads/$branch" 2>/dev/null || true)
-    if [[ "$actual_sha" != "$expected_sha" ]] || branch_is_checked_out "$repository" "$branch"; then
+    if [[ "$actual_sha" != "$expected_sha" ]] || branch_is_checked_out "$repository" "$branch" || repository_has_git_operation "$repository"; then
       print -u2 -- "FAILED branch $branch: changed or checked out during revalidation"
       (( failed_deletions += 1 ))
       continue
