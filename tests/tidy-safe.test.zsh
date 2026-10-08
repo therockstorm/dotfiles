@@ -287,14 +287,15 @@ git_in "$test_root" clone "$remote" "$lagging_repository" >/dev/null
 lagging_sha=$(git_in "$lagging_repository" rev-parse HEAD)
 git_in "$seed" fetch origin >/dev/null
 git_in "$seed" merge --ff-only origin/main >/dev/null
+git_in "$seed" branch old-upstream
 git_in "$seed" commit --allow-empty -m 'advance remote main' >/dev/null
-git_in "$seed" push origin main >/dev/null
+git_in "$seed" push origin main old-upstream >/dev/null
 git_in "$lagging_repository" fetch origin >/dev/null
 lagging_safe="$test_root/lagging-safe"
 git_in "$lagging_repository" worktree add -b lagging-safe "$lagging_safe" origin/main >/dev/null
 git_in "$lagging_repository" branch --unset-upstream lagging-safe
 git_in "$lagging_repository" branch lagging-local-branch origin/main >/dev/null
-git_in "$lagging_repository" branch --set-upstream-to=main lagging-local-branch >/dev/null
+git_in "$lagging_repository" branch --set-upstream-to=origin/old-upstream lagging-local-branch >/dev/null
 lagging_output=$(cd "$lagging_repository" && "$tidy_safe" --apply --yes)
 assert_contains "$lagging_output" "REMOVED worktree $lagging_safe"
 assert_contains "$lagging_output" 'REMOVED branch lagging-safe'
@@ -303,6 +304,44 @@ assert_missing "$lagging_safe"
 git_in "$lagging_repository" show-ref --verify --quiet refs/heads/lagging-safe && fail 'lagging-safe branch still exists'
 git_in "$lagging_repository" show-ref --verify --quiet refs/heads/lagging-local-branch && fail 'lagging-local-branch still exists'
 [[ "$(git_in "$lagging_repository" rev-parse HEAD)" == "$lagging_sha" ]] || fail 'advanced the primary main'
+
+# Advance a branch during apply's fetch, after its initial SHA check. The
+# refreshed merge proof still applies to the audited SHA, not the new commit.
+git_in "$lagging_repository" branch fetch-race origin/main >/dev/null
+export TIDY_SAFE_TEST_REAL_GIT=$(whence -p git)
+export TIDY_SAFE_TEST_FETCH_RACE_ARM="$test_root/fetch-race-arm"
+cat > "$fake_bin/git" <<'EOF'
+#!/usr/bin/env zsh
+if [[ "$*" == *'fetch --prune origin'* && -e "$TIDY_SAFE_TEST_FETCH_RACE_ARM" ]]; then
+  rm "$TIDY_SAFE_TEST_FETCH_RACE_ARM"
+  directory=$2
+  tree=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse 'fetch-race^{tree}')
+  old_sha=$("$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" rev-parse fetch-race)
+  new_sha=$(print 'unmerged change during fetch' | "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" commit-tree "$tree" -p "$old_sha")
+  "$TIDY_SAFE_TEST_REAL_GIT" -C "$directory" update-ref refs/heads/fetch-race "$new_sha" "$old_sha"
+fi
+exec "$TIDY_SAFE_TEST_REAL_GIT" "$@"
+EOF
+chmod +x "$fake_bin/git"
+fetch_fifo="$test_root/fetch-race-confirmation"
+fetch_output_file="$test_root/fetch-race-output"
+mkfifo "$fetch_fifo"
+exec {fetch_fd}<> "$fetch_fifo"
+(cd "$lagging_repository" && "$tidy_safe" --apply < "$fetch_fifo" > "$fetch_output_file" 2>&1) &
+fetch_pid=$!
+for _ in {1..250}; do
+  grep -q 'Delete all items marked SAFE?' "$fetch_output_file" 2>/dev/null && break
+  sleep 0.02
+done
+grep -q 'Delete all items marked SAFE?' "$fetch_output_file" 2>/dev/null || fail 'timed out waiting for fetch race confirmation'
+touch "$TIDY_SAFE_TEST_FETCH_RACE_ARM"
+print -u "$fetch_fd" y
+exec {fetch_fd}>&-
+if wait "$fetch_pid"; then
+  fail 'deleted a branch that advanced during fetch'
+fi
+assert_contains "$(<"$fetch_output_file")" 'FAILED branch fetch-race: changed or checked out during revalidation'
+git_in "$lagging_repository" show-ref --verify --quiet refs/heads/fetch-race || fail 'fetch-race branch was deleted'
 
 default_scope="$test_root/default-change"
 default_repository="$default_scope/repository"

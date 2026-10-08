@@ -9,7 +9,7 @@ recursive_root=
 typeset -a excludes repositories
 typeset -a safe_worktree_repos safe_worktree_paths safe_worktree_reasons
 typeset -a safe_worktree_shas safe_worktree_branch_refs
-typeset -a safe_branch_repos safe_branch_names safe_branch_shas safe_branch_modes safe_branch_reasons
+typeset -a safe_branch_repos safe_branch_names safe_branch_shas safe_branch_reasons
 typeset -A merged_proof_cache
 repositories_scanned=0
 directories_excluded=0
@@ -301,7 +301,7 @@ audit_worktree() {
 
 audit_repository() {
   local repository=$1 default_ref default_branch remote_url
-  local worktree_path= branch_ref= locked=false prunable=false line branch sha reason mode
+  local worktree_path= branch_ref= locked=false prunable=false line branch sha reason
   typeset -A safe_paths checked_out_refs
 
   if is_excluded "$repository"; then
@@ -383,16 +383,10 @@ audit_repository() {
       (( kept_items += 1 ))
       continue
     fi
-    if git -C "$repository" merge-base --is-ancestor "$sha" "$default_ref"; then
-      mode=merged
-    else
-      mode=squash
-    fi
     print -- "  SAFE branch $branch: $reason"
     safe_branch_repos+=("$repository")
     safe_branch_names+=("$branch")
     safe_branch_shas+=("$sha")
-    safe_branch_modes+=("$mode")
     safe_branch_reasons+=("$reason")
   done < <(git -C "$repository" for-each-ref --format='%(refname:short)' refs/heads)
 }
@@ -448,8 +442,7 @@ worktree_still_safe() {
 }
 
 apply_deletions() {
-  local index repository worktree_path branch expected_sha expected_branch_ref actual_sha default_ref reason mode
-  local default_branch
+  local index repository worktree_path branch expected_sha expected_branch_ref actual_sha default_ref reason
 
   for (( index = 1; index <= ${#safe_worktree_paths[@]}; index++ )); do
     repository=${safe_worktree_repos[$index]}
@@ -474,7 +467,6 @@ apply_deletions() {
     repository=${safe_branch_repos[$index]}
     branch=${safe_branch_names[$index]}
     expected_sha=${safe_branch_shas[$index]}
-    mode=${safe_branch_modes[$index]}
     reason=${safe_branch_reasons[$index]}
     actual_sha=$(git -C "$repository" rev-parse --verify "refs/heads/$branch" 2>/dev/null || true)
     if [[ "$actual_sha" != "$expected_sha" || -z "$actual_sha" ]]; then
@@ -498,21 +490,16 @@ apply_deletions() {
       (( failed_deletions += 1 ))
       continue
     fi
-    default_branch=${default_ref#refs/remotes/origin/}
-    if [[ "$mode" == merged ]]; then
-      # Check the freshly verified remote history, even when local HEAD or
-      # the branch's configured upstream is behind it. These overrides are
-      # command-local and do not change the user's branch configuration.
-      if git -C "$repository" \
-        -c "branch.$branch.remote=origin" \
-        -c "branch.$branch.merge=refs/heads/$default_branch" \
-        branch -d -- "$branch" >/dev/null; then
-        print -- "REMOVED branch $branch: $reason"
-      else
-        print -u2 -- "FAILED branch $branch: delete failed"
-        (( failed_deletions += 1 ))
-      fi
-    elif git -C "$repository" branch -D -- "$branch" >/dev/null; then
+    # Recheck local state after network revalidation. The exact audited commit
+    # is already proven safe against the live remote default; branch -d would
+    # instead test potentially outdated local HEAD or upstream history.
+    actual_sha=$(git -C "$repository" rev-parse --verify "refs/heads/$branch" 2>/dev/null || true)
+    if [[ "$actual_sha" != "$expected_sha" ]] || branch_is_checked_out "$repository" "$branch"; then
+      print -u2 -- "FAILED branch $branch: changed or checked out during revalidation"
+      (( failed_deletions += 1 ))
+      continue
+    fi
+    if git -C "$repository" branch -D -- "$branch" >/dev/null; then
       print -- "REMOVED branch $branch: $reason"
     else
       print -u2 -- "FAILED branch $branch: delete failed"
