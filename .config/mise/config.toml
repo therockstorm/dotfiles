@@ -43,6 +43,9 @@ idiomatic_version_file_enable_tools = ["node"]
 #   work context: ~/.config/groundcrew/ and friends reference internal work
 #     repos — copy by hand on work machines (see README "Migrating from an
 #     old machine").
+# Shared instructions are public; ~/.agents/AGENTS.local.md and supporting
+# ~/.agents/docs/ stay local and are copied by hand on new machines.
+"~/.agents/AGENTS.md" = { source = "~/dev/dotfiles/.agents/AGENTS.md" }
 "~/.claude/CLAUDE.md" = { source = "~/dev/dotfiles/.claude/CLAUDE.md" }
 "~/.claude/settings.json" = { source = "~/dev/dotfiles/.claude/settings.json" }
 "~/.claude/statusline.sh" = { source = "~/dev/dotfiles/.claude/statusline.sh" }

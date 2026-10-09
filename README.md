@@ -57,3 +57,6 @@ These files are deliberately untracked. Copy them once:
 - `~/.zshrc.local`: work exports and aliases (update repo path)
 - `~/.config/op/*.env`: work 1Password scopes
 - `~/.config/groundcrew/`: config and allow-hosts files
+- `~/.agents/AGENTS.local.md` and `~/.agents/docs/`: private agent instructions
+  and supporting work context; shared instructions are symlinked from
+  `.agents/AGENTS.md` in this repo
