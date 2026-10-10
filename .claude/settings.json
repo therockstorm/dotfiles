@@ -4,7 +4,7 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "DISABLE_AUTOUPDATER": "1",
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
-    "ENABLE_LSP_TOOL": "0",
+    "ENABLE_LSP_TOOL": "1",
     "ENABLE_TOOL_SEARCH": "1"
   },
   "permissions": {
@@ -140,7 +140,6 @@
       "Bash(git push -f *)",
       "Bash(git reset --hard *)",
       "Bash(git restore .)",
-      "Bash(op *)",
       "Bash(rm -r *)",
       "Bash(rm -rf *)",
       "Bash(sudo *)",
@@ -157,7 +156,6 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "claude-fable-5-1[1m]",
   "disableClaudeAiConnectors": true,
   "skillOverrides": {
     "dd-apm": "off",
@@ -218,6 +216,9 @@
   "autoMemoryEnabled": false,
   "skipDangerousModePermissionPrompt": true,
   "remoteControlAtStartup": true,
+  "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "autoCompactWindow": 400000,
+  "outputStyle": "Concise"
 }
