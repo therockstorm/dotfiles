@@ -3,7 +3,7 @@ set -euo pipefail
 unsetopt bg_nice
 
 repo_root=${0:A:h:h}
-tidy_safe="$repo_root/bin/tidy-safe"
+tidy_safe=${TIDY_SAFE_BINARY:-"$repo_root/bin/tidy-safe"}
 aliases_file="$repo_root/source/aliases.zsh"
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/tidy-safe-test.XXXXXX")
 test_root=${test_root:A}
@@ -112,6 +112,7 @@ if [[ "$1" == api ]]; then
   merged_at=2026-09-01T00:00:00Z
   case "$head_sha" in
     "$TIDY_SAFE_TEST_MERGED_SHA") ;;
+    "$TIDY_SAFE_TEST_PR_ANCESTOR_SHA"|"$TIDY_SAFE_TEST_PR_DIVERGENT_SHA") head_sha=$TIDY_SAFE_TEST_PR_DESCENDANT_SHA ;;
     "$TIDY_SAFE_TEST_MISMATCHED_SHA") head_sha=0000000000000000000000000000000000000000 ;;
     "$TIDY_SAFE_TEST_WRONG_BASE_SHA") base_branch=release ;;
     "$TIDY_SAFE_TEST_UNMERGED_SHA") merged_at= ;;
@@ -137,6 +138,186 @@ esac
 EOF
 chmod +x "$fake_bin/gh"
 export PATH="$fake_bin:$PATH"
+
+# Broken .git links must be reported instead of silently disappearing.
+broken_scope="$test_root/broken-discovery"
+mkdir -p "$broken_scope/checkout"
+print -r -- "gitdir: $test_root/missing-git-metadata" > "$broken_scope/checkout/.git"
+print unique > "$broken_scope/checkout/unique.txt"
+broken_discovery=$("$tidy_safe" --recursive "$broken_scope")
+assert_contains "$broken_discovery" "SKIP checkout $broken_scope/checkout: Git metadata is missing or invalid"
+assert_contains "$broken_discovery" 'Unreadable checkouts: 1'
+assert_exists "$broken_scope/checkout/unique.txt"
+
+# Detached HEADs must use the commit-to-PR lookup without a branch name.
+detached_repository="$test_root/detached-pr-primary"
+detached_pr_worktree="$test_root/detached-pr-worktree"
+git_in "$test_root" clone "$remote" "$detached_repository" >/dev/null
+git_in "$detached_repository" fetch "$repository" "$TIDY_SAFE_TEST_MERGED_SHA" >/dev/null
+git_in "$detached_repository" worktree add --detach "$detached_pr_worktree" "$TIDY_SAFE_TEST_MERGED_SHA" >/dev/null
+detached_pr_output=$(cd "$detached_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$detached_pr_output" "REMOVED worktree $detached_pr_worktree: exact head of a PR merged into main"
+assert_missing "$detached_pr_worktree"
+
+# Earlier commits in a squash-merged PR are safe only when ancestry is proven.
+pr_source="$test_root/pr-source"
+git_in "$test_root" clone "$remote" "$pr_source" >/dev/null
+git_in "$pr_source" switch -c pr-source >/dev/null
+print earlier > "$pr_source/pr-earlier.txt"
+git_in "$pr_source" add pr-earlier.txt
+git_in "$pr_source" commit -m 'earlier PR commit' >/dev/null
+export TIDY_SAFE_TEST_PR_ANCESTOR_SHA=$(git_in "$pr_source" rev-parse HEAD)
+print final > "$pr_source/pr-final.txt"
+git_in "$pr_source" add pr-final.txt
+git_in "$pr_source" commit -m 'final PR commit' >/dev/null
+export TIDY_SAFE_TEST_PR_DESCENDANT_SHA=$(git_in "$pr_source" rev-parse HEAD)
+git_in "$pr_source" push origin HEAD:refs/pull/777/head >/dev/null
+ancestor_repository="$test_root/ancestor-primary"
+git_in "$test_root" clone --no-local "$remote" "$ancestor_repository" >/dev/null
+git_in "$ancestor_repository" fetch "$pr_source" "$TIDY_SAFE_TEST_PR_ANCESTOR_SHA" >/dev/null
+git_in "$ancestor_repository" cat-file -e "$TIDY_SAFE_TEST_PR_DESCENDANT_SHA^{commit}" 2>/dev/null && fail 'PR final head must initially be absent'
+git_in "$ancestor_repository" branch ancestor-local "$TIDY_SAFE_TEST_PR_ANCESTOR_SHA"
+ancestor_detached="$test_root/ancestor-detached"
+git_in "$ancestor_repository" worktree add --detach "$ancestor_detached" "$TIDY_SAFE_TEST_PR_ANCESTOR_SHA" >/dev/null
+ancestor_divergent="$test_root/ancestor-divergent"
+git_in "$ancestor_repository" worktree add -b ancestor-divergent "$ancestor_divergent" "$TIDY_SAFE_TEST_PR_ANCESTOR_SHA" >/dev/null
+print divergent > "$ancestor_divergent/divergent.txt"
+git_in "$ancestor_divergent" add divergent.txt
+git_in "$ancestor_divergent" commit -m 'unique local change after earlier PR commit' >/dev/null
+export TIDY_SAFE_TEST_PR_DIVERGENT_SHA=$(git_in "$ancestor_divergent" rev-parse HEAD)
+ancestor_output=$(cd "$ancestor_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$ancestor_output" "REMOVED worktree $ancestor_detached: included in a PR merged into main"
+assert_contains "$ancestor_output" 'REMOVED branch ancestor-local: included in a PR merged into main'
+assert_contains "$ancestor_output" "KEEP worktree $ancestor_divergent: unmerged"
+assert_missing "$ancestor_detached"
+assert_exists "$ancestor_divergent/divergent.txt"
+git_in "$ancestor_repository" show-ref --verify --quiet refs/heads/ancestor-divergent || fail 'deleted divergent branch'
+
+# REBASE_HEAD can survive after the rebase state has been removed.
+marker_repository="$test_root/marker-primary"
+marker_worktree="$test_root/marker-worktree"
+git_in "$test_root" clone "$remote" "$marker_repository" >/dev/null
+git_in "$marker_repository" worktree add -b marker-worktree "$marker_worktree" main >/dev/null
+git_in "$marker_worktree" update-ref REBASE_HEAD HEAD
+git_in "$marker_repository" branch marker-unrelated main
+marker_output=$(cd "$marker_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$marker_output" "REMOVED worktree $marker_worktree"
+assert_contains "$marker_output" 'REMOVED branch marker-worktree'
+assert_contains "$marker_output" 'REMOVED branch marker-unrelated'
+assert_missing "$marker_worktree"
+
+# A merged checkout containing only missing tracked files has no unique data.
+deleted_repository="$test_root/deleted-primary"
+deleted_worktree="$test_root/deleted-worktree"
+git_in "$test_root" clone "$remote" "$deleted_repository" >/dev/null
+git_in "$deleted_repository" worktree add -b deleted-worktree "$deleted_worktree" main >/dev/null
+rm -- "$deleted_worktree/README.md"
+deleted_unmerged="$test_root/deleted-unmerged"
+git_in "$deleted_repository" worktree add -b deleted-unmerged "$deleted_unmerged" main >/dev/null
+git_in "$deleted_unmerged" commit --allow-empty -m 'unmerged deletion-only fixture' >/dev/null
+rm -- "$deleted_unmerged/README.md"
+deleted_staged="$test_root/deleted-staged"
+git_in "$deleted_repository" worktree add -b deleted-staged "$deleted_staged" main >/dev/null
+git_in "$deleted_staged" rm README.md >/dev/null
+deleted_output=$(cd "$deleted_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$deleted_output" "REMOVED worktree $deleted_worktree: only recoverable deletions; merged into origin/main"
+assert_contains "$deleted_output" 'REMOVED branch deleted-worktree'
+assert_contains "$deleted_output" "KEEP worktree $deleted_unmerged: unmerged"
+assert_missing "$deleted_worktree"
+assert_missing "$deleted_staged"
+assert_contains "$deleted_output" 'REMOVED branch deleted-staged'
+assert_exists "$deleted_unmerged/.git"
+
+# Worktree registrations can outlive their directory or .git marker.
+unavailable_repository="$test_root/unavailable-primary"
+git_in "$test_root" clone "$remote" "$unavailable_repository" >/dev/null
+missing_worktree="$test_root/missing-worktree"
+broken_worktree="$test_root/broken-worktree"
+git_in "$unavailable_repository" worktree add -b missing-worktree "$missing_worktree" main >/dev/null
+git_in "$unavailable_repository" worktree add -b broken-worktree "$broken_worktree" main >/dev/null
+git_in "$unavailable_repository" branch unavailable-protected main
+rm -rf -- "$missing_worktree"
+rm -- "$broken_worktree/.git"
+# Partial removals leave only recoverable tracked files and ignored artifacts.
+partial_worktree="$test_root/partial-worktree"
+git_in "$unavailable_repository" worktree add -b partial-worktree "$partial_worktree" main >/dev/null
+rm -- "$partial_worktree/.git" "$partial_worktree/README.md"
+modified_orphan="$test_root/modified-orphan"
+git_in "$unavailable_repository" worktree add -b modified-orphan "$modified_orphan" main >/dev/null
+rm -- "$modified_orphan/.git"
+print unique-change > "$modified_orphan/README.md"
+untracked_orphan="$test_root/untracked-orphan"
+git_in "$unavailable_repository" worktree add -b untracked-orphan "$untracked_orphan" main >/dev/null
+rm -- "$untracked_orphan/.git"
+print unique-content > "$untracked_orphan/unique.txt"
+git_in "$unavailable_repository" worktree add -b stale-unmerged "$test_root/stale-unmerged" main >/dev/null
+git_in "$test_root/stale-unmerged" commit --allow-empty -m 'unmerged stale work' >/dev/null
+rm -rf -- "$test_root/stale-unmerged"
+git_in "$unavailable_repository" worktree add --detach "$test_root/stale-detached" main >/dev/null
+git_in "$test_root/stale-detached" commit --allow-empty -m 'unmerged detached work' >/dev/null
+stale_detached_sha=$(git_in "$test_root/stale-detached" rev-parse HEAD)
+rm -rf -- "$test_root/stale-detached"
+git_in "$unavailable_repository" worktree add -b stale-operation "$test_root/stale-operation" main >/dev/null
+operation_marker=$(git_in "$test_root/stale-operation" rev-parse --path-format=absolute --git-path MERGE_HEAD)
+git_in "$unavailable_repository" rev-parse HEAD > "$operation_marker"
+rm -rf -- "$test_root/stale-operation"
+git_in "$unavailable_repository" worktree add --detach "$test_root/stale-merged-detached" main >/dev/null
+rm -rf -- "$test_root/stale-merged-detached"
+git_in "$unavailable_repository" worktree add -b stale-locked "$test_root/stale-locked" main >/dev/null
+git_in "$unavailable_repository" worktree lock "$test_root/stale-locked"
+rm -rf -- "$test_root/stale-locked"
+unavailable_dry_run=$(cd "$unavailable_repository" && "$tidy_safe" --recursive 2> "$test_root/unavailable-dry-stderr")
+assert_contains "$unavailable_dry_run" "SAFE worktree $missing_worktree: stale registration; merged into origin/main"
+assert_contains "$unavailable_dry_run" "KEEP worktree $test_root/stale-detached: unmerged"
+assert_contains "$unavailable_dry_run" "KEEP worktree $test_root/stale-operation: Git operation in progress"
+# Finish the operation in metadata so the remaining unrelated branches can clean up.
+rm -- "$operation_marker"
+unavailable_output=$(cd "$unavailable_repository" && "$tidy_safe" --recursive --apply --yes 2> "$test_root/unavailable-stderr")
+unavailable_stderr=$(<"$test_root/unavailable-stderr")
+[[ "$unavailable_stderr" != *fatal:* ]] || fail "Git probes leaked fatal errors: $unavailable_stderr"
+assert_contains "$unavailable_output" "REMOVED worktree $missing_worktree: stale registration; merged into origin/main"
+assert_contains "$unavailable_output" "REMOVED worktree $broken_worktree: stale registration with recoverable files; merged into origin/main"
+assert_contains "$unavailable_output" "REMOVED worktree $partial_worktree: stale registration with recoverable files; merged into origin/main"
+assert_contains "$unavailable_output" "KEEP worktree $modified_orphan: modified or untracked files"
+assert_contains "$unavailable_output" "KEEP worktree $untracked_orphan: modified or untracked files"
+assert_exists "$modified_orphan/README.md"
+assert_exists "$untracked_orphan/unique.txt"
+assert_contains "$unavailable_output" 'REMOVED branch unavailable-protected'
+assert_contains "$unavailable_output" 'REMOVED branch missing-worktree'
+git_in "$unavailable_repository" show-ref --verify --quiet refs/heads/unavailable-protected && fail 'retained a merged unrelated branch'
+git_in "$unavailable_repository" show-ref --verify --quiet refs/heads/stale-unmerged || fail 'deleted unmerged stale branch'
+assert_contains "$(git_in "$unavailable_repository" worktree list --porcelain)" "$stale_detached_sha"
+assert_missing "$broken_worktree"
+assert_contains "$unavailable_output" "REMOVED worktree $test_root/stale-merged-detached: stale registration; merged into origin/main"
+assert_contains "$unavailable_output" "KEEP worktree $test_root/stale-locked: locked"
+assert_contains "$(git_in "$unavailable_repository" worktree list --porcelain)" "worktree $test_root/stale-locked"
+[[ ! -s "$test_root/unavailable-dry-stderr" && ! -s "$test_root/unavailable-stderr" ]] || fail 'unavailable worktree probes wrote to stderr'
+
+# A missing directory that reappears after the audit must not be removed.
+reappeared_worktree="$test_root/stale-reappeared"
+git_in "$unavailable_repository" worktree add -b stale-reappeared "$reappeared_worktree" main >/dev/null
+rm -rf -- "$reappeared_worktree"
+reappeared_fifo="$test_root/reappeared-confirmation"
+reappeared_output_file="$test_root/reappeared-output"
+mkfifo "$reappeared_fifo"
+exec {reappeared_fd}<> "$reappeared_fifo"
+(cd "$unavailable_repository" && "$tidy_safe" --apply < "$reappeared_fifo" > "$reappeared_output_file" 2>&1) &
+reappeared_pid=$!
+for _ in {1..250}; do
+  grep -q 'Delete all items marked SAFE?' "$reappeared_output_file" 2>/dev/null && break
+  sleep 0.02
+done
+grep -q 'Delete all items marked SAFE?' "$reappeared_output_file" 2>/dev/null || fail 'timed out waiting for stale worktree confirmation'
+mkdir "$reappeared_worktree"
+print restored > "$reappeared_worktree/restored.txt"
+print -u "$reappeared_fd" y
+exec {reappeared_fd}>&-
+if wait "$reappeared_pid"; then
+  fail 'removed a stale worktree whose directory reappeared'
+fi
+assert_contains "$(<"$reappeared_output_file")" "FAILED worktree $reappeared_worktree: changed or no longer proven safe after audit"
+assert_exists "$reappeared_worktree/restored.txt"
+git_in "$unavailable_repository" show-ref --verify --quiet refs/heads/stale-reappeared || fail 'deleted branch after its worktree reappeared'
 
 function_kinds=$(zsh -c "source '$aliases_file'; whence -w tidy; whence -w tidy-safe")
 assert_contains "$function_kinds" 'tidy: function'
