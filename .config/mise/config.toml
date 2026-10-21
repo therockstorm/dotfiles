@@ -4,7 +4,6 @@
 "npm:oxfmt" = "latest"
 "npm:skills" = "latest"
 "npm:@tobilu/qmd" = "latest"
-node = "lts"
 "github:aubepkg/aube" = "latest"
 
 [settings]

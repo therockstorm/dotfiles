@@ -1,9 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "DISABLE_AUTOUPDATER": "1",
-    "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
     "ENABLE_LSP_TOOL": "1",
     "ENABLE_TOOL_SEARCH": "1"
   },
@@ -156,7 +153,6 @@
     ],
     "defaultMode": "auto"
   },
-  "disableClaudeAiConnectors": true,
   "skillOverrides": {
     "dd-apm": "off",
     "dd-code-generation": "off",
@@ -185,10 +181,7 @@
     "command": "GIT_OPTIONAL_LOCKS=0 ~/.claude/statusline.sh"
   },
   "enabledPlugins": {
-    "core@clipboard": true,
     "frontend-design@claude-plugins-official": true,
-    "linear@claude-plugins-official": true,
-    "slack@claude-plugins-official": false,
     "codex@openai-codex": true
   },
   "extraKnownMarketplaces": {
@@ -196,12 +189,6 @@
       "source": {
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
-      }
-    },
-    "clipboard": {
-      "source": {
-        "source": "github",
-        "repo": "ClipboardHealth/core-utils"
       }
     },
     "openai-codex": {
