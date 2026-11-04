@@ -35,7 +35,6 @@ cask "chatgpt"
 cask "claude", trusted: true
 cask "cleanshot"
 cask "cmux"
-cask "codexbar"
 cask "cotypist"
 cask "ddpm"
 cask "font-fira-code-nerd-font"
