@@ -50,9 +50,27 @@ ignored_output=$(cd "$repository" && "$tidy_safe" --apply --yes)
 [[ -f "$case_protected/CACHE/unique.txt" ]] || fail 'lost file because ignore matching changed case sensitivity'
 [[ -f "$self_protected/untracked-ignore/.gitignore" ]] || fail 'lost untracked ignore file that protected itself'
 
+# Missing directories need no merge proof when a local branch keeps the commit.
+missing_unmerged="$test_root/missing-unmerged"
+git -C "$repository" worktree add -qb missing-unmerged "$missing_unmerged" main
+git -C "$missing_unmerged" commit --allow-empty -qm unmerged
+unmerged_sha=$(git -C "$missing_unmerged" rev-parse HEAD)
+missing_detached="$test_root/missing-detached"
+git -C "$repository" worktree add -q --detach "$missing_detached" "$unmerged_sha"
+rm -rf -- "$missing_unmerged" "$missing_detached"
+output=$(cd "$repository" && "$tidy_safe")
+[[ "$output" == *"SAFE worktree $missing_unmerged: stale registration; commit retained by local branch missing-unmerged"* ]] || fail 'did not offer safe missing registration cleanup'
+[[ "$(git -C "$repository" worktree list --porcelain)" == *"worktree $missing_unmerged"* ]] || fail 'dry run removed registration'
+output=$(cd "$repository" && "$tidy_safe" --apply --yes)
+[[ "$output" == *"REMOVED worktree $missing_unmerged:"* ]] || fail 'retained missing registration with preserved commit'
+[[ "$(git -C "$repository" rev-parse refs/heads/missing-unmerged)" == "$unmerged_sha" ]] || fail 'lost unmerged commit or branch'
+[[ "$output" == *"KEEP worktree $missing_detached: unmerged"* ]] || fail 'did not protect unmerged detached registration'
+[[ "$(git -C "$repository" worktree list --porcelain)" == *"worktree $missing_detached"* ]] || fail 'lost detached registration'
+
 # Removing a whole directory must not discard staged-only data in its index.
 missing_staged="$test_root/missing-staged"
 git -C "$repository" worktree add -qb missing-staged "$missing_staged" main
+git -C "$missing_staged" commit --allow-empty -qm 'unmerged staged-data fixture'
 print 'unique staged-only content' > "$missing_staged/staged-only.txt"
 git -C "$missing_staged" add staged-only.txt
 missing_admin=$(git -C "$missing_staged" rev-parse --absolute-git-dir)
