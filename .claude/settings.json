@@ -124,9 +124,7 @@
       "mcp__plugin_linear_linear__get_issue",
       "mcp__plugin_linear_linear__list_comments",
       "mcp__plugin_linear_linear__list_issues",
-      "mcp__plugin_linear_linear__list_projects",
-      "Write(/Users/rocky/dev/worktrees/skills-private/kb-review-skill/**)",
-      "Edit(/Users/rocky/dev/worktrees/skills-private/kb-review-skill/**)"
+      "mcp__plugin_linear_linear__list_projects"
     ],
     "deny": [
       "AskUserQuestion",
