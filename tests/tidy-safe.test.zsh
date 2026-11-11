@@ -270,7 +270,7 @@ unavailable_dry_run=$(cd "$unavailable_repository" && "$tidy_safe" --recursive 2
 assert_contains "$unavailable_dry_run" "SAFE worktree $missing_worktree: stale registration; merged into origin/main"
 assert_contains "$unavailable_dry_run" "KEEP worktree $test_root/stale-detached: unmerged"
 assert_contains "$unavailable_dry_run" "KEEP worktree $test_root/stale-operation: Git operation in progress"
-# Finish the operation in metadata so the remaining unrelated branches can clean up.
+# Finish the operation so its own worktree and branch can clean up.
 rm -- "$operation_marker"
 unavailable_output=$(cd "$unavailable_repository" && "$tidy_safe" --recursive --apply --yes 2> "$test_root/unavailable-stderr")
 unavailable_stderr=$(<"$test_root/unavailable-stderr")
@@ -558,8 +558,10 @@ EOF
 chmod +x "$editor"
 git_in "$operation_repository" -c sequence.editor="$editor" rebase -i --force-rebase HEAD~1 >/dev/null
 operation_sha=$(git_in "$operation_repository" rev-parse rebase-protected)
+git_in "$operation_repository" branch unrelated-to-rebase origin/main
 operation_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
 assert_contains "$operation_output" 'KEEP branch rebase-protected: Git operation in progress'
+assert_contains "$operation_output" 'REMOVED branch unrelated-to-rebase:'
 [[ "$(git_in "$operation_repository" rev-parse rebase-protected)" == "$operation_sha" ]] || fail 'deleted the primary rebase branch'
 git_in "$operation_repository" -c core.editor=true rebase --continue >/dev/null
 git_in "$operation_repository" switch main >/dev/null
@@ -569,12 +571,58 @@ git_in "$bisect_worktree" bisect start >/dev/null
 git_in "$bisect_worktree" bisect bad HEAD >/dev/null
 git_in "$bisect_worktree" bisect good HEAD~2 >/dev/null
 bisect_sha=$(git_in "$bisect_worktree" rev-parse bisect-protected)
+git_in "$operation_repository" branch unrelated-to-bisect origin/main
 bisect_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
 assert_contains "$bisect_output" "KEEP worktree $bisect_worktree: Git operation in progress"
 assert_contains "$bisect_output" 'KEEP branch bisect-protected: Git operation in progress'
+assert_contains "$bisect_output" 'REMOVED branch unrelated-to-bisect:'
 assert_exists "$bisect_worktree"
 [[ "$(git_in "$operation_repository" rev-parse bisect-protected)" == "$bisect_sha" ]] || fail 'deleted the secondary bisect branch'
 git_in "$bisect_worktree" bisect reset >/dev/null
+
+# An abandoned attached sequencer protects its branch, not the whole repository.
+sequencer_directory=$(git_in "$bisect_worktree" rev-parse --git-path sequencer)
+mkdir "$sequencer_directory"
+git_in "$operation_repository" branch unrelated-to-sequencer origin/main
+sequencer_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$sequencer_output" "KEEP worktree $bisect_worktree: Git operation in progress"
+assert_contains "$sequencer_output" 'REMOVED branch unrelated-to-sequencer:'
+git_in "$operation_repository" show-ref --verify --quiet refs/heads/bisect-protected || fail 'lost sequencer branch'
+rm -r -- "$sequencer_directory"
+
+# Unknown operation ownership still blocks branch deletion.
+unknown_operation="$test_root/unknown-operation"
+git_in "$operation_repository" worktree add --detach "$unknown_operation" origin/main >/dev/null
+unknown_sequencer=$(git_in "$unknown_operation" rev-parse --git-path sequencer)
+mkdir "$unknown_sequencer"
+git_in "$operation_repository" branch unknown-operation-protected origin/main
+unknown_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$unknown_output" 'KEEP branch unknown-operation-protected: Git operation in progress'
+git_in "$operation_repository" show-ref --verify --quiet refs/heads/unknown-operation-protected || fail 'lost branch with unknown operation ownership'
+rm -r -- "$unknown_sequencer"
+
+# Git records a detached rebase's owner as "detached HEAD", not a branch.
+detached_operation="$test_root/detached-operation"
+git_in "$operation_repository" worktree add --detach "$detached_operation" origin/main >/dev/null
+git_in "$detached_operation" -c sequence.editor="$editor" rebase -i --force-rebase HEAD~1 >/dev/null
+rebase_owner=$(git_in "$detached_operation" rev-parse --git-path rebase-merge/head-name)
+[[ "$(<"$rebase_owner")" == 'detached HEAD' ]] || fail 'fixture did not create a detached rebase'
+git_in "$operation_repository" branch detached-rebase-protected origin/main
+detached_rebase_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$detached_rebase_output" 'KEEP branch detached-rebase-protected: Git operation in progress'
+git_in "$operation_repository" show-ref --verify --quiet refs/heads/detached-rebase-protected || fail 'lost branch during detached rebase'
+git_in "$detached_operation" rebase --abort >/dev/null
+
+# Detached bisect records its starting commit SHA instead of a branch name.
+git_in "$detached_operation" bisect start >/dev/null
+git_in "$detached_operation" bisect bad HEAD >/dev/null
+git_in "$detached_operation" bisect good HEAD~2 >/dev/null
+bisect_owner=$(git_in "$detached_operation" rev-parse --git-path BISECT_START)
+[[ "$(<"$bisect_owner")" == "$(git_in "$operation_repository" rev-parse origin/main)" ]] || fail 'fixture did not create detached bisect'
+git_in "$operation_repository" branch detached-bisect-protected origin/main
+detached_bisect_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$detached_bisect_output" 'KEEP branch detached-bisect-protected: Git operation in progress'
+git_in "$operation_repository" show-ref --verify --quiet refs/heads/detached-bisect-protected || fail 'lost branch during detached bisect'
 
 default_scope="$test_root/default-change"
 default_repository="$default_scope/repository"

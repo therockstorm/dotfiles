@@ -5,6 +5,7 @@ setopt errexit nounset pipefail
 apply=false
 assume_yes=false
 recursive=false
+inactive_worktrees=false
 recursive_root=
 typeset -a excludes repositories
 typeset -a safe_worktree_repos safe_worktree_paths safe_worktree_reasons
@@ -21,6 +22,7 @@ failed_deletions=0
 usage() {
   cat <<'EOF'
 Usage: tidy-safe [--apply] [--yes] [--recursive [ROOT]] [--exclude NAME_OR_PATH]
+                 [--inactive-worktrees]
 
 Audit a repository and delete only worktrees and branches whose exact commits
 are proven safe. Missing worktree registrations may also be removed when their
@@ -29,6 +31,10 @@ commit stays on a local branch. The default is a dry run in the current reposito
 Options:
   --apply                 Delete the items marked SAFE.
   --yes                   Do not prompt when used with --apply.
+  --inactive-worktrees    Also remove clean or recoverable worktrees whose exact
+                          commit stays on a local branch, after 24 hours without
+                          Git activity and no process working in the directory.
+                          Requires lsof; unmerged branches are retained.
   --recursive [ROOT]      Discover and deduplicate repositories below ROOT.
                           ROOT defaults to the current directory.
   --exclude NAME_OR_PATH  Skip a directory tree by directory name or path.
@@ -55,6 +61,9 @@ while (( $# > 0 )); do
       ;;
     --yes)
       assume_yes=true
+      ;;
+    --inactive-worktrees)
+      inactive_worktrees=true
       ;;
     --recursive)
       recursive=true
@@ -89,7 +98,7 @@ absolute_directory() {
 }
 
 primary_worktree() {
-  git -C "$1" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -n 1
+  git -C "$1" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | sed -n '1p'
 }
 
 is_excluded() {
@@ -176,7 +185,7 @@ live_default_remote_ref() {
   head_ref=$(
     git -C "$repository" ls-remote --symref origin HEAD 2>/dev/null |
       sed -n 's/^ref: \(refs\/heads\/[^[:space:]]*\)[[:space:]]*HEAD$/\1/p' |
-      head -n 1
+      sed -n '1p'
   )
   [[ -n "$head_ref" ]] || return 1
   branch=${head_ref#refs/heads/}
@@ -263,7 +272,7 @@ safe_worktree_commit_reason() {
     print -- "$reason"
     return 0
   fi
-  [[ "$mode" == missing && -n "$branch" ]] || return 1
+  [[ ( "$mode" == missing || "$inactive_worktrees" == true ) && -n "$branch" ]] || return 1
   retained_sha=$(git -C "$repository" rev-parse --verify "refs/heads/$branch" 2>/dev/null) || return 1
   [[ "$retained_sha" == "$sha" ]] || return 1
   print -- "commit retained by local branch $branch"
@@ -296,21 +305,71 @@ in_progress_operation() {
   [[ -d "$git_directory" && -f "$git_directory/HEAD" ]] || return 0
   # REBASE_HEAD may remain after a rebase ends. Rebase directories record
   # active state; merge and sequencer markers are worktree-local files.
-  for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-apply rebase-merge sequencer; do
+  for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-apply rebase-merge sequencer index.lock HEAD.lock; do
     [[ -e "$git_directory/$marker" ]] && return 0
   done
   return 1
 }
 
-repository_has_git_operation() {
-  local repository=$1 common directory
+branch_has_git_operation() {
+  local repository=$1 branch=$2 common directory owner marker recorded known_owner
   common=$(git -C "$repository" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
-  in_progress_operation "$repository" "$common" && return 0
-  for directory in "$common"/worktrees/*(N/); do
-    [[ -f "$directory/gitdir" ]] || return 0
-    in_progress_operation "$repository" "$directory" && return 0
+  for directory in "$common" "$common"/worktrees/*(N/); do
+    [[ -f "$directory/HEAD" ]] || return 0
+    in_progress_operation "$repository" "$directory" || continue
+    known_owner=false
+    owner=$(git --git-dir="$directory" symbolic-ref --quiet HEAD 2>/dev/null || true)
+    if [[ "$owner" == refs/heads/* ]]; then
+      known_owner=true
+      [[ "$owner" == "refs/heads/$branch" ]] && return 0
+    fi
+    for marker in rebase-merge/head-name rebase-apply/head-name BISECT_START; do
+      [[ -f "$directory/$marker" ]] || continue
+      recorded=$(<"$directory/$marker")
+      [[ -n "$recorded" ]] || continue
+      owner=${recorded#refs/heads/}
+      git -C "$repository" show-ref --verify --quiet "refs/heads/$owner" || continue
+      known_owner=true
+      [[ "$owner" == "$branch" ]] && return 0
+    done
+    [[ "$known_owner" == true ]] || return 0
   done
   return 1
+}
+
+worktree_activity_reason() {
+  local repository=$1 worktree=$2 directory snapshot line canonical branch common now file
+  local -a modified
+  directory=$(registered_git_directory "$repository" "$worktree") || {
+    print -- 'Git activity unavailable'
+    return
+  }
+  zmodload zsh/stat 2>/dev/null || { print -- 'Git activity unavailable'; return; }
+  now=$(date +%s)
+  common=$(git -C "$repository" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
+    print -- 'Git activity unavailable'
+    return
+  }
+  branch=$(git --git-dir="$directory" symbolic-ref --quiet HEAD 2>/dev/null || true)
+  for file in "$directory/HEAD" "$directory/index" "$directory/logs/HEAD" ${branch:+"$common/$branch"} ${branch:+"$common/logs/$branch"}; do
+    [[ -e "$file" ]] || continue
+    zstat -A modified +mtime "$file" 2>/dev/null || { print -- 'Git activity unavailable'; return; }
+    if (( now - modified[1] < 86400 )); then
+      print -- 'Git activity within the last 24 hours'
+      return
+    fi
+  done
+  canonical=$(absolute_directory "$worktree") || { print -- 'directory unavailable'; return; }
+  snapshot=$(lsof -d cwd -Fn 2>/dev/null) || { print -- 'process activity unavailable'; return; }
+  [[ "$snapshot" == *$'\nn/'* || "$snapshot" == n/* ]] || { print -- 'process activity unavailable'; return; }
+  while IFS= read -r line; do
+    [[ "$line" == n/* ]] || continue
+    line=${line#n}
+    if [[ "$line" == "$canonical" || "$line" == "$canonical/"* ]]; then
+      print -- 'process working in directory'
+      return
+    fi
+  done <<< "$snapshot"
 }
 
 orphaned_worktree_is_clean() {
@@ -395,7 +454,7 @@ recoverable_worktree_contents() {
 
 audit_worktree() {
   local repository=$1 default_ref=$2 worktree_path=$3 branch_ref=$4 locked=$5 prunable=$6
-  local worktree_status sha branch reason git_directory mode=live
+  local worktree_status sha branch reason git_directory activity mode=live
   [[ "$worktree_path" != "$repository" ]] || return 0
 
   if is_excluded "$worktree_path"; then
@@ -442,7 +501,7 @@ audit_worktree() {
       (( kept_items += 1 ))
       return 0
     fi
-    if ! worktree_status=$(git -C "$worktree_path" status --porcelain=v1 --untracked-files=all 2>/dev/null); then
+    if ! worktree_status=$(GIT_OPTIONAL_LOCKS=0 git -C "$worktree_path" status --porcelain=v1 --untracked-files=all 2>/dev/null); then
       print -- "  KEEP worktree $worktree_path: status unavailable"
       (( kept_items += 1 ))
       return 0
@@ -468,6 +527,14 @@ audit_worktree() {
       return 0
     }
   fi
+  if [[ "$inactive_worktrees" == true && "$mode" != missing ]]; then
+    activity=$(worktree_activity_reason "$repository" "$worktree_path")
+    if [[ -n "$activity" ]]; then
+      print -- "  KEEP worktree $worktree_path: $activity"
+      (( kept_items += 1 ))
+      return 0
+    fi
+  fi
   branch=${branch_ref#refs/heads/}
   [[ "$branch" != "$branch_ref" ]] || branch=
   if ! reason=$(safe_worktree_commit_reason "$repository" "$default_ref" "$branch" "$sha" "$mode"); then
@@ -491,7 +558,7 @@ audit_worktree() {
 }
 
 audit_repository() {
-  local repository=$1 default_ref default_branch remote_url branch_cleanup_blocked=false
+  local repository=$1 default_ref default_branch remote_url
   local worktree_path= branch_ref= locked=false prunable=false line branch sha reason
   typeset -A safe_paths checked_out_refs
 
@@ -565,11 +632,10 @@ audit_repository() {
     esac
   done < <(git -C "$repository" worktree list --porcelain; print)
 
-  repository_has_git_operation "$repository" && branch_cleanup_blocked=true
   while IFS= read -r branch; do
     [[ -n "$branch" && "$branch" != "$default_branch" ]] || continue
     (( ${+checked_out_refs[refs/heads/$branch]} )) && continue
-    if [[ "$branch_cleanup_blocked" == true ]]; then
+    if branch_has_git_operation "$repository" "$branch"; then
       print -- "  KEEP branch $branch: Git operation in progress or worktree status unavailable"
       (( kept_items += 1 ))
       continue
@@ -625,7 +691,7 @@ worktree_registration_matches() {
 
 worktree_still_safe() {
   local repository=$1 worktree_path=$2 expected_sha=$3 expected_branch_ref=$4
-  local worktree_status actual_sha branch default_ref git_directory
+  local worktree_status actual_sha branch default_ref git_directory activity
   local mode=${5:-live}
 
   if [[ "$mode" != live ]]; then
@@ -646,10 +712,14 @@ worktree_still_safe() {
   else
     [[ -d "$worktree_path" ]] || return 1
     worktree_registration_matches "$repository" "$worktree_path" "$expected_branch_ref" || return 1
-    worktree_status=$(git -C "$worktree_path" status --porcelain=v1 --untracked-files=all 2>/dev/null) || return 1
+    worktree_status=$(GIT_OPTIONAL_LOCKS=0 git -C "$worktree_path" status --porcelain=v1 --untracked-files=all 2>/dev/null) || return 1
     [[ -z "$worktree_status" ]] || return 1
     in_progress_operation "$worktree_path" && return 1
     actual_sha=$(git -C "$worktree_path" rev-parse --verify HEAD 2>/dev/null) || return 1
+  fi
+  if [[ "$inactive_worktrees" == true && "$mode" != missing ]]; then
+    activity=$(worktree_activity_reason "$repository" "$worktree_path")
+    [[ -z "$activity" ]] || return 1
   fi
   [[ "$mode" != missing ]] || staged_index_is_recoverable "$git_directory" || return 1
   [[ "$actual_sha" == "$expected_sha" ]] || return 1
@@ -673,6 +743,10 @@ worktree_still_safe() {
     worktree_registration_matches "$repository" "$worktree_path" "$expected_branch_ref" true || return 1
     in_progress_operation "$worktree_path" "$git_directory" && return 1
     [[ "$(git --git-dir="$git_directory" rev-parse --verify HEAD 2>/dev/null)" == "$expected_sha" ]] || return 1
+  fi
+  if [[ "$inactive_worktrees" == true && "$mode" != missing ]]; then
+    activity=$(worktree_activity_reason "$repository" "$worktree_path")
+    [[ -z "$activity" ]] || return 1
   fi
   return 0
 }
@@ -735,7 +809,7 @@ apply_deletions() {
       (( failed_deletions += 1 ))
       continue
     fi
-    if branch_is_checked_out "$repository" "$branch" || repository_has_git_operation "$repository"; then
+    if branch_is_checked_out "$repository" "$branch" || branch_has_git_operation "$repository" "$branch"; then
       print -u2 -- "FAILED branch $branch: checked out or Git operation in progress"
       (( failed_deletions += 1 ))
       continue
@@ -755,7 +829,7 @@ apply_deletions() {
     # is already proven safe against the live remote default; branch -d would
     # instead test potentially outdated local HEAD or upstream history.
     actual_sha=$(git -C "$repository" rev-parse --verify "refs/heads/$branch" 2>/dev/null || true)
-    if [[ "$actual_sha" != "$expected_sha" ]] || branch_is_checked_out "$repository" "$branch" || repository_has_git_operation "$repository"; then
+    if [[ "$actual_sha" != "$expected_sha" ]] || branch_is_checked_out "$repository" "$branch" || branch_has_git_operation "$repository" "$branch"; then
       print -u2 -- "FAILED branch $branch: changed or checked out during revalidation"
       (( failed_deletions += 1 ))
       continue

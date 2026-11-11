@@ -40,6 +40,39 @@ Manual steps not yet automated:
 - Slack > Settings > Notifications > Sound & appearance > Show a badge on
   Slack's icon to indicate new activity: off.
 
+## Git cleanup
+
+`tidy-safe --recursive ~/dev` audits repositories without deleting anything.
+Add `--apply --yes` to remove worktrees and branches with merge proof.
+
+To also remove inactive worktrees while retaining their unmerged branches:
+
+```sh
+tidy-safe --recursive ~/dev --inactive-worktrees --apply --yes
+```
+
+This opt-in mode requires no Git activity in the preceding 24 hours and no
+process with a working directory inside the worktree. It checks Git metadata
+timestamps and uses `lsof`; if either check is unavailable, it keeps the worktree.
+The activity checks apply to existing worktrees, including merged worktrees.
+Missing directories retain the normal stale-registration cleanup policy.
+
+Clean worktrees and partial removals with no unique surviving contents can be
+removed when their exact commit remains on a local branch. Partial removals
+with missing `.git` markers are repaired and rechecked before removal. Modified,
+staged-only, or untracked data, locked worktrees, and Git operations remain
+protected. Detached unmerged worktrees still require merge proof.
+
+A rebase, bisect, or cherry-pick protects its affected branch. Unrelated merged
+branches can still be cleaned up; if the operation's branch cannot be identified,
+branch cleanup stays blocked. Cleanup revalidates candidates before deletion.
+
+Run the cleanup regression tests with:
+
+```sh
+(for test in tests/tidy-safe*.test.zsh; do zsh "$test" || exit; done)
+```
+
 ## Agent notes
 
 For an AI agent: run the Installation one-liner. A human must accept the
