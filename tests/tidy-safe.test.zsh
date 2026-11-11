@@ -558,8 +558,10 @@ EOF
 chmod +x "$editor"
 git_in "$operation_repository" -c sequence.editor="$editor" rebase -i --force-rebase HEAD~1 >/dev/null
 operation_sha=$(git_in "$operation_repository" rev-parse rebase-protected)
+git_in "$operation_repository" branch unrelated-to-rebase origin/main
 operation_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
 assert_contains "$operation_output" 'KEEP branch rebase-protected: Git operation in progress'
+assert_contains "$operation_output" 'REMOVED branch unrelated-to-rebase:'
 [[ "$(git_in "$operation_repository" rev-parse rebase-protected)" == "$operation_sha" ]] || fail 'deleted the primary rebase branch'
 git_in "$operation_repository" -c core.editor=true rebase --continue >/dev/null
 git_in "$operation_repository" switch main >/dev/null
@@ -569,12 +571,34 @@ git_in "$bisect_worktree" bisect start >/dev/null
 git_in "$bisect_worktree" bisect bad HEAD >/dev/null
 git_in "$bisect_worktree" bisect good HEAD~2 >/dev/null
 bisect_sha=$(git_in "$bisect_worktree" rev-parse bisect-protected)
+git_in "$operation_repository" branch unrelated-to-bisect origin/main
 bisect_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
 assert_contains "$bisect_output" "KEEP worktree $bisect_worktree: Git operation in progress"
 assert_contains "$bisect_output" 'KEEP branch bisect-protected: Git operation in progress'
+assert_contains "$bisect_output" 'REMOVED branch unrelated-to-bisect:'
 assert_exists "$bisect_worktree"
 [[ "$(git_in "$operation_repository" rev-parse bisect-protected)" == "$bisect_sha" ]] || fail 'deleted the secondary bisect branch'
 git_in "$bisect_worktree" bisect reset >/dev/null
+
+# An abandoned attached sequencer protects its branch, not the whole repository.
+sequencer_directory=$(git_in "$bisect_worktree" rev-parse --git-path sequencer)
+mkdir "$sequencer_directory"
+git_in "$operation_repository" branch unrelated-to-sequencer origin/main
+sequencer_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$sequencer_output" "KEEP worktree $bisect_worktree: Git operation in progress"
+assert_contains "$sequencer_output" 'REMOVED branch unrelated-to-sequencer:'
+git_in "$operation_repository" show-ref --verify --quiet refs/heads/bisect-protected || fail 'lost sequencer branch'
+rm -r -- "$sequencer_directory"
+
+# Unknown operation ownership still blocks branch deletion.
+unknown_operation="$test_root/unknown-operation"
+git_in "$operation_repository" worktree add --detach "$unknown_operation" origin/main >/dev/null
+unknown_sequencer=$(git_in "$unknown_operation" rev-parse --git-path sequencer)
+mkdir "$unknown_sequencer"
+git_in "$operation_repository" branch unknown-operation-protected origin/main
+unknown_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$unknown_output" 'KEEP branch unknown-operation-protected: Git operation in progress'
+git_in "$operation_repository" show-ref --verify --quiet refs/heads/unknown-operation-protected || fail 'lost branch with unknown operation ownership'
 
 default_scope="$test_root/default-change"
 default_repository="$default_scope/repository"
