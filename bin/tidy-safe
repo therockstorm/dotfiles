@@ -327,8 +327,10 @@ branch_has_git_operation() {
       [[ -f "$directory/$marker" ]] || continue
       recorded=$(<"$directory/$marker")
       [[ -n "$recorded" ]] || continue
+      owner=${recorded#refs/heads/}
+      git -C "$repository" show-ref --verify --quiet "refs/heads/$owner" || continue
       known_owner=true
-      [[ "$recorded" == "$branch" || "$recorded" == "refs/heads/$branch" ]] && return 0
+      [[ "$owner" == "$branch" ]] && return 0
     done
     [[ "$known_owner" == true ]] || return 0
   done

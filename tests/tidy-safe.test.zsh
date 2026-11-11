@@ -270,7 +270,7 @@ unavailable_dry_run=$(cd "$unavailable_repository" && "$tidy_safe" --recursive 2
 assert_contains "$unavailable_dry_run" "SAFE worktree $missing_worktree: stale registration; merged into origin/main"
 assert_contains "$unavailable_dry_run" "KEEP worktree $test_root/stale-detached: unmerged"
 assert_contains "$unavailable_dry_run" "KEEP worktree $test_root/stale-operation: Git operation in progress"
-# Finish the operation in metadata so the remaining unrelated branches can clean up.
+# Finish the operation so its own worktree and branch can clean up.
 rm -- "$operation_marker"
 unavailable_output=$(cd "$unavailable_repository" && "$tidy_safe" --recursive --apply --yes 2> "$test_root/unavailable-stderr")
 unavailable_stderr=$(<"$test_root/unavailable-stderr")
@@ -599,6 +599,30 @@ git_in "$operation_repository" branch unknown-operation-protected origin/main
 unknown_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
 assert_contains "$unknown_output" 'KEEP branch unknown-operation-protected: Git operation in progress'
 git_in "$operation_repository" show-ref --verify --quiet refs/heads/unknown-operation-protected || fail 'lost branch with unknown operation ownership'
+rm -r -- "$unknown_sequencer"
+
+# Git records a detached rebase's owner as "detached HEAD", not a branch.
+detached_operation="$test_root/detached-operation"
+git_in "$operation_repository" worktree add --detach "$detached_operation" origin/main >/dev/null
+git_in "$detached_operation" -c sequence.editor="$editor" rebase -i --force-rebase HEAD~1 >/dev/null
+rebase_owner=$(git_in "$detached_operation" rev-parse --git-path rebase-merge/head-name)
+[[ "$(<"$rebase_owner")" == 'detached HEAD' ]] || fail 'fixture did not create a detached rebase'
+git_in "$operation_repository" branch detached-rebase-protected origin/main
+detached_rebase_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$detached_rebase_output" 'KEEP branch detached-rebase-protected: Git operation in progress'
+git_in "$operation_repository" show-ref --verify --quiet refs/heads/detached-rebase-protected || fail 'lost branch during detached rebase'
+git_in "$detached_operation" rebase --abort >/dev/null
+
+# Detached bisect records its starting commit SHA instead of a branch name.
+git_in "$detached_operation" bisect start >/dev/null
+git_in "$detached_operation" bisect bad HEAD >/dev/null
+git_in "$detached_operation" bisect good HEAD~2 >/dev/null
+bisect_owner=$(git_in "$detached_operation" rev-parse --git-path BISECT_START)
+[[ "$(<"$bisect_owner")" == "$(git_in "$operation_repository" rev-parse origin/main)" ]] || fail 'fixture did not create detached bisect'
+git_in "$operation_repository" branch detached-bisect-protected origin/main
+detached_bisect_output=$(cd "$operation_repository" && "$tidy_safe" --apply --yes)
+assert_contains "$detached_bisect_output" 'KEEP branch detached-bisect-protected: Git operation in progress'
+git_in "$operation_repository" show-ref --verify --quiet refs/heads/detached-bisect-protected || fail 'lost branch during detached bisect'
 
 default_scope="$test_root/default-change"
 default_repository="$default_scope/repository"
