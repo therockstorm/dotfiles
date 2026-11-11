@@ -207,7 +207,7 @@ tidy() {
     echo "No worktrees to remove.\n"
   fi
 
-  local branches=$(git branch --format='%(refname:short) %(worktreepath)' | awk 'NF == 1 {print $1}' | grep -v '^crew/' | grep -Fxv -- "$current_branch" | { [ -n "$default_branch" ] && grep -Fxv -- "$default_branch" || cat; })
+  local branches=$(git branch --format='%(refname:lstrip=2) %(worktreepath)' | awk 'NF == 1 {print $1}' | grep -v '^crew/' | grep -Fxv -- "$current_branch" | { [ -n "$default_branch" ] && grep -Fxv -- "$default_branch" || cat; })
   if [ -n "$branches" ]; then
     echo "Branches to delete:"
     echo "$branches\n"

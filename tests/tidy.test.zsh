@@ -97,4 +97,28 @@ output=$(run_tidy <<< $'y\ny' 2>&1) || fail "tidy failed: $output"
 assert_branch locked
 assert_no_branch unused-after-failure
 
+# Custom refs reproduce the user's refs/fbd/... collision with refs/heads/fbd/....
+git -C "$repository" branch fbd/pr-30419
+git -C "$repository" update-ref refs/fbd/pr-30419 HEAD
+output=$(run_tidy <<< $'n\ny' 2>&1) || fail "tidy failed: $output"
+[[ "$output" != *'fatal:'* && "$output" != *'error:'* ]] || fail "$output"
+assert_no_branch fbd/pr-30419
+git -C "$repository" show-ref --verify --quiet refs/fbd/pr-30419 || fail 'deleted custom ref'
+
+# Matching tags must not change branch names or bypass branch protection.
+for branch in main crew/retained fbd/pr-30346; do
+  if [[ "$branch" == fbd/* ]]; then
+    git -C "$repository" branch "$branch" refs/heads/main
+  fi
+  git -C "$repository" -c tag.gpgSign=false tag "$branch"
+done
+output=$(run_tidy <<< $'n\ny' 2>&1) || fail "tidy failed: $output"
+[[ "$output" != *'fatal:'* && "$output" != *'error:'* ]] || fail "$output"
+assert_no_branch fbd/pr-30346
+assert_branch main
+assert_branch crew/retained
+for tag in main crew/retained fbd/pr-30346; do
+  git -C "$repository" show-ref --verify --quiet "refs/tags/$tag" || fail "deleted tag: $tag"
+done
+
 print 'PASS: tidy prunes stale registrations and protects branches still in worktrees'
