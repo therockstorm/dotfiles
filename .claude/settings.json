@@ -5,6 +5,7 @@
     "ENABLE_TOOL_SEARCH": "1"
   },
   "permissions": {
+    "additionalDirectories": ["/Users/rocky/dev"],
     "allow": [
       "Bash(docker compose down)",
       "Bash(docker compose ls)",
