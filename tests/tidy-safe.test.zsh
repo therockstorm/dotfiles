@@ -656,8 +656,4 @@ assert_contains "$default_apply" "REMOVED worktree $trunk_worktree"
 assert_missing "$trunk_worktree"
 assert_exists "$main_only_worktree"
 
-if grep -qi groundcrew "$tidy_safe"; then
-  fail 'tidy-safe contains Groundcrew-specific code'
-fi
-
 print 'tidy-safe integration tests passed'

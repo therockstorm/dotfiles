@@ -32,23 +32,21 @@ idiomatic_version_file_enable_tools = ["node"]
 #
 # NOT tracked (public repo):
 #   secrets: ~/.claude/.credentials.json, ~/.config/gh/hosts.yml,
-#     ~/.codex/auth.json, ~/.config/groundtruth/ (auth only),
-#     ~/.config/groundcrew/op.env (op:// vault refs), ~/.dogrc
+#     ~/.codex/auth.json, ~/.config/groundtruth/ (auth only), ~/.dogrc
 #   ~/.codex entirely: config.toml and rules/ are machine-appended state
 #     (repo trust list, command-approval history) that would republish
 #     internal paths and commands on every commit. Re-set the three real
 #     preferences on a new machine: model, model_reasoning_effort,
 #     personality.
-#   work context: ~/.config/groundcrew/ and friends reference internal work
+#   work context: ~/.config/clipboard/ and friends reference internal work
 #     repos — copy by hand on work machines (see README "Migrating from an
 #     old machine").
-# Shared instructions are public; ~/.agents/AGENTS.local.md and supporting
-# ~/.agents/docs/ stay local and are copied by hand on new machines.
+# Shared instructions are public; ~/.agents/AGENTS.local.md stays local and
+# is copied by hand on new machines.
 "~/.agents/AGENTS.md" = { source = "~/dev/dotfiles/.agents/AGENTS.md" }
 "~/.claude/CLAUDE.md" = { source = "~/dev/dotfiles/.claude/CLAUDE.md" }
 "~/.claude/settings.json" = { source = "~/dev/dotfiles/.claude/settings.json" }
 "~/.claude/statusline.sh" = { source = "~/dev/dotfiles/.claude/statusline.sh" }
-"~/.claude/docs" = { source = "~/dev/dotfiles/.claude/docs" }
 "~/.config/zed/settings.json" = { source = "~/dev/dotfiles/.config/zed/settings.json" }
 "~/.config/zed/keymap.json" = { source = "~/dev/dotfiles/.config/zed/keymap.json" }
 "~/.config/ghostty/config" = { source = "~/dev/dotfiles/.config/ghostty/config" }

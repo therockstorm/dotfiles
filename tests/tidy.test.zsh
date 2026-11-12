@@ -52,18 +52,12 @@ assert_no_branch missing-directory
   fail 'stale worktree registrations remain'
 [[ -f "$test_root/missing-marker/README.md" ]] || fail 'pruning deleted orphan files'
 
-# A protected worktree can have a branch outside crew/; neither should be removed.
-protected="$repository/.groundcrew/worktrees/protected"
-git -C "$repository" worktree add -qb protected "$protected"
-git -C "$repository" branch crew/retained
+# A non-primary worktree and its branch are removed.
 git -C "$repository" worktree add -qb disposable "$test_root/disposable"
 output=$(run_tidy <<< $'y\ny' 2>&1) || fail "tidy failed: $output"
 [[ "$output" != *'fatal:'* && "$output" != *'error:'* ]] || fail "$output"
-[[ -f "$protected/.git" && ! -e "$test_root/disposable" ]] ||
-  fail 'worktree protection or removal failed'
+[[ ! -e "$test_root/disposable" ]] || fail 'worktree removal failed'
 assert_branch main
-assert_branch crew/retained
-assert_branch protected
 assert_no_branch disposable
 
 # Declining worktree removal must exclude its branch from the deletion prompt.
@@ -106,7 +100,7 @@ assert_no_branch fbd/pr-30419
 git -C "$repository" show-ref --verify --quiet refs/fbd/pr-30419 || fail 'deleted custom ref'
 
 # Matching tags must not change branch names or bypass branch protection.
-for branch in main crew/retained fbd/pr-30346; do
+for branch in main fbd/pr-30346; do
   if [[ "$branch" == fbd/* ]]; then
     git -C "$repository" branch "$branch" refs/heads/main
   fi
@@ -116,8 +110,7 @@ output=$(run_tidy <<< $'n\ny' 2>&1) || fail "tidy failed: $output"
 [[ "$output" != *'fatal:'* && "$output" != *'error:'* ]] || fail "$output"
 assert_no_branch fbd/pr-30346
 assert_branch main
-assert_branch crew/retained
-for tag in main crew/retained fbd/pr-30346; do
+for tag in main fbd/pr-30346; do
   git -C "$repository" show-ref --verify --quiet "refs/tags/$tag" || fail "deleted tag: $tag"
 done
 
