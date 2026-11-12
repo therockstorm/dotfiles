@@ -166,8 +166,8 @@ ghurl() {
 #
 # Prunes stale registrations, then prompts to force-remove every non-primary
 # worktree. Prompts to force-delete local branches that are no longer checked
-# out. Must be run from the primary worktree with a
-# checked-out branch (not detached HEAD).
+# out. Must be run from the primary worktree with a checked-out branch (not
+# detached HEAD).
 tidy() {
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "tidy: not inside a git work tree" >&2

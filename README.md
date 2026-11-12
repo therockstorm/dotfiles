@@ -89,5 +89,6 @@ These files are deliberately untracked. Copy them once:
 
 - `~/.zshrc.local`: work exports and aliases (update repo path)
 - `~/.config/op/*.env`: work 1Password scopes
+- `~/.config/clipboard/`: work shell config sourced by `.zshrc`
 - `~/.agents/AGENTS.local.md`: private agent instructions; shared instructions
   are symlinked from `.agents/AGENTS.md` in this repo
