@@ -10,12 +10,17 @@
 
 Use these agent-independent defaults. Explicit destinations and repository conventions take precedence. Create directories as needed.
 
-- **Worktrees:** `~/dev/agents/worktrees/<repo>/<task>/`. Before creating one, inspect `git worktree list` and reuse a suitable checkout. When a tool manages worktree placement, keep its assigned path.
+- **Worktrees:** `~/dev/agents/worktrees/<repo>/<task>/`. Before creating one, inspect `git worktree list` and reuse a suitable checkout. When a tool manages worktree placement, keep its assigned path and leave removal to the tool. After you report the task's merge, remove the task's worktrees.
 - **Research:** `~/dev/agents/research/YYYY-MM-DD/<topic>/` for findings and supporting evidence.
 - **Deliverables:** `~/dev/agents/deliverables/YYYY-MM-DD/<task>/` for standalone reports, exports, and generated assets.
 - **Scratch:** use a unique directory under `${TMPDIR:-/tmp}` for disposable intermediate files. Move results worth retaining to research or deliverables.
 
 Use descriptive lowercase hyphenated names for `<topic>` and `<task>`; include a ticket ID when available. Reuse a directory only for the same work; add a distinguishing suffix for separate work. Report retained output paths in the final response.
+
+## Git
+
+- Before answering about a repository or branching from it, run `git fetch origin` and use `origin/<default-branch>` in place of the local default branch, which may be stale.
+- After you report a merge, list the next steps that remain.
 
 ## Local instructions
 
