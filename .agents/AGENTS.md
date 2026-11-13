@@ -17,6 +17,11 @@ Use these agent-independent defaults. Explicit destinations and repository conve
 
 Use descriptive lowercase hyphenated names for `<topic>` and `<task>`; include a ticket ID when available. Reuse a directory only for the same work; add a distinguishing suffix for separate work. Report retained output paths in the final response.
 
+## Git
+
+- Before answering about a repository or branching from it, run `git fetch origin` and work from `origin/<default-branch>`; the local checkout may be stale.
+- After you report a merge, remove the task's worktrees and list the next steps that remain.
+
 ## Local instructions
 
 - Before starting a task, read `~/.agents/AGENTS.local.md` if it exists for private work and machine-specific instructions.
