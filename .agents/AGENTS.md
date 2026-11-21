@@ -10,7 +10,7 @@
 - Form estimates independently before comparing them with the user's numbers. When uncertainty could change the decision, name the unknowns and state confidence as high, moderate, low, or unknown.
 - Refer to documents by full title and link.
 - End your final response to the user with what's outstanding and whether the session is safe to archive.
-- Get the user's approval for each specific write to Notion or Linear, including assigning or notifying a person; a skill step the user invoked counts as approval. Propose changes to existing Notion docs as suggested edits.
+- Propose changes to existing Notion docs as suggested edits.
 - Write Slack messages as drafts in Slack through the Slack connector for the user to review and send. Send only on the user's explicit request, including a skill step the user invoked to send.
 
 ## Work locations
