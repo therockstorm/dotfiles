@@ -28,6 +28,7 @@ Use descriptive lowercase hyphenated names for `<topic>` and `<task>`; include a
 
 - Before answering about a repository or branching from it, run `git fetch origin` and use `origin/<default-branch>` in place of the local default branch, which may be stale.
 - After you report a merge, list the next steps that remain.
+- Create commits unsigned: pass `--no-gpg-sign` to `git commit`, `git merge`, and `git rebase`.
 
 ## Local instructions
 
