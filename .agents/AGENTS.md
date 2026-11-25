@@ -12,6 +12,7 @@
 - End your final response to the user with what's outstanding and whether the session is safe to archive.
 - Propose changes to existing Notion docs as suggested edits.
 - Write Slack messages as drafts in Slack through the Slack connector for the user to review and send. Send only on the user's explicit request, including a skill step the user invoked to send.
+- Drive browser and desktop UI work with Codex's built-in computer use when you are Codex; other agents use the `agent-browser` CLI through the `agent-browser` skill.
 
 ## Work locations
 
